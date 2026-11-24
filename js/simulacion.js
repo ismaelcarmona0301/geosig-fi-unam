@@ -14,8 +14,10 @@
   const DIAS_JS = [null, 'lun', 'mar', 'mie', 'jue', 'vie', 'sab']; // getDay(): 0 = domingo (cerrado)
   const ESTADOS = ['bajo', 'moderado', 'alto', 'critico'];
   // Grupos de uso equivalente (para sugerir alternativas), por subtipo
-  const GRUPOS = { computo: 'computo', laboratorio: 'computo', biblioteca: 'estudio', estudio: 'estudio',
-    descanso: 'estudio', jardin: 'estudio', plaza: 'convivencia', auditorio: 'auditorio', cafeteria: 'convivencia', estacionamiento: 'estacionamiento', motos: 'motos' };
+  // Solo se sugiere un lugar del mismo tipo: biblioteca → biblioteca, PC-PUMA → PC-PUMA, recreativo → recreativo.
+  const GRUPOS = { computo: 'computo', laboratorio: 'laboratorio', biblioteca: 'biblioteca', estudio: 'biblioteca',
+    descanso: 'recreativo', jardin: 'recreativo', plaza: 'recreativo', cancha: 'recreativo', cafeteria: 'recreativo',
+    auditorio: 'auditorio', estacionamiento: 'estacionamiento', motos: 'motos' };
   const aMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
   let KPI = null;
@@ -50,6 +52,7 @@
   /** Estado de una zona: por densidad (personas/m²) en exteriores, por saturación en lo demás. */
   function estadoZona(id, ocupacion, saturacion) {
     const r = R(id);
+    if (r && r.tipo === 'estacionamiento') return saturacion < 0.45 ? 'bajo' : 'moderado';   // sin máximo: nunca alerta
     const u = r && r.umbrales_densidad;
     if (!u) return estado(saturacion);
     const d = ocupacion / r.superficie_m2;
@@ -145,7 +148,68 @@
     return { ahora, puntos, reglas, escenario: esc };
   }
 
-  /** Alternativas del mismo grupo de uso, ordenadas por saturación prevista a 30 min (y distancia). */
+  /** Día de hoy completo cada 15 min, la misma fuente para todas las pestañas:
+   *  lo ya ocurrido (simulación en vivo de cada corte), el corte actual y el pronóstico del resto. */
+  function diaCompleto(id, fecha, escenarioForzado) {
+    const r = R(id);
+    const ahora = ocupacionEnVivo(id, fecha, escenarioForzado);
+    const esc = ahora.escenario, dia = DIAS_JS[fecha.getDay()], m0 = minutoDelDia(fecha);
+    const ratio = ahora.abierto && ahora.base > 0.5 ? Math.max(0.6, Math.min(1.4, ahora.ocupacion / ahora.base)) : 1;
+    const pts = [];
+    for (let M = INICIO_MIN; M <= FIN_MIN; M += PASO) {
+      let q, tipo;
+      if (M <= m0 - PASO) {
+        tipo = 'pasado';
+        const f = new Date(fecha); f.setHours(0, M, 0, 0);
+        const v = dia ? ocupacionEnVivo(id, f, escenarioForzado) : { ocupacion: 0, saturacion: 0, estado: 'cerrado' };
+        q = { ocupacion: v.ocupacion, saturacion: v.saturacion, estado: v.estado };
+      } else if (M <= m0) {
+        tipo = 'ahora';
+        q = { ocupacion: ahora.ocupacion, saturacion: ahora.saturacion, estado: ahora.estado };
+      } else {
+        tipo = 'futuro';
+        const base = dia ? perfilEn(id, esc, dia, M) : null;
+        if (base === null) q = { ocupacion: 0, saturacion: 0, estado: 'cerrado' };
+        else {
+          const oc = Math.max(0, Math.min(r.capacidad_max, Math.round(base * (1 + (ratio - 1) * Math.exp(-(M - m0) / 45)))));
+          q = { ocupacion: oc, saturacion: oc / r.capacidad_max, estado: estadoZona(id, oc, oc / r.capacidad_max) };
+        }
+      }
+      pts.push({ minuto: M, tipo, ...q });
+    }
+    return pts;
+  }
+
+  /** Día completo hora por hora (07:00–21:00): lo que ya pasó hoy (simulación en vivo de esa hora),
+   *  la hora actual y el pronóstico del resto del día (perfil del escenario + corrección por lo observado). */
+  function pronosticoDia(id, fecha, escenarioForzado) {
+    const r = R(id);
+    const ahora = ocupacionEnVivo(id, fecha, escenarioForzado);
+    const esc = ahora.escenario, dia = DIAS_JS[fecha.getDay()], m0 = minutoDelDia(fecha);
+    const ratio = ahora.abierto && ahora.base > 0.5 ? Math.max(0.6, Math.min(1.4, ahora.ocupacion / ahora.base)) : 1;
+    const horas = [];
+    for (let M = Math.ceil(INICIO_MIN / 60) * 60; M <= FIN_MIN; M += 60) {
+      const tipo = m0 >= M && m0 < M + 60 ? 'ahora' : M < m0 ? 'pasado' : 'futuro';
+      let q;
+      if (tipo === 'ahora') q = { ocupacion: ahora.ocupacion, saturacion: ahora.saturacion, estado: ahora.estado };
+      else if (tipo === 'pasado') {
+        const f = new Date(fecha); f.setHours(M / 60, 0, 0, 0);
+        const v = ocupacionEnVivo(id, f, escenarioForzado);
+        q = { ocupacion: v.ocupacion, saturacion: v.saturacion, estado: v.estado };
+      } else {
+        const base = dia ? perfilEn(id, esc, dia, M) : null;
+        if (base === null) q = { ocupacion: 0, saturacion: 0, estado: 'cerrado' };
+        else {
+          const oc = Math.max(0, Math.min(r.capacidad_max, Math.round(base * (1 + (ratio - 1) * Math.exp(-(M - m0) / 45)))));
+          q = { ocupacion: oc, saturacion: oc / r.capacidad_max, estado: estadoZona(id, oc, oc / r.capacidad_max) };
+        }
+      }
+      horas.push({ minuto: M, hora: horaTxt(M), tipo, ...q });
+    }
+    return horas;
+  }
+
+  /** Alternativas del mismo tipo con espacio, ordenadas por cercanía (la ocupación prevista a 30 min solo desempata). */
   function alternativas(id, fecha, escenarioForzado, distancias) {
     const g = grupo(id);
     if (!g) return [];
@@ -157,7 +221,8 @@
         const sat30 = p.puntos.length ? p.puntos[p.puntos.length - 1].saturacion : p.ahora.saturacion;
         const dist = distancias ? distancias[o] : null;
         return { id: o, nombre: R(o).nombre, ahora: p.ahora, sat30, dist, esEdificio: !KPI.recintos[o],
-          puntaje: sat30 + (dist ? dist / 2000 : 0) };
+          // Lo que manda es la cercanía; la ocupación solo desempata (lleno = +150 m equivalentes)
+          puntaje: (dist || 0) + sat30 * 150 };
       })
       .filter((a) => a.ahora.abierto && ['bajo', 'moderado'].includes(a.ahora.estado) && a.sat30 < UMBRALES.alto)
       .sort((a, b) => a.puntaje - b.puntaje);
@@ -165,7 +230,7 @@
 
   function grupo(id) {
     const r = R(id);
-    if (r.tipo === 'edificio') return r.uso_principal === 'biblioteca' ? 'estudio' : null;
+    if (r.tipo === 'edificio') return r.uso_principal === 'biblioteca' ? 'biblioteca' : null;
     return GRUPOS[r.subtipo] || null;
   }
 
@@ -181,17 +246,31 @@
     return Math.round((suma / n) * ruido(id, fecha, m, 0.05) * 60 / (r.permanencia_min || 20));
   }
 
-  /** Conectividad: dispositivos conectados contra la capacidad de los puntos de acceso. */
+  /** Ocupación en una sola escala 0–1 para todos los espacios: en áreas abiertas la densidad se lleva
+   *  a los mismos cortes que el semáforo (moderado 50 %, alto 75 %, crítico 90 %). */
+  function equivalente(id, ocupacion) {
+    const r = R(id), u = r.umbrales_densidad;
+    if (!u) return Math.min(1, ocupacion / r.capacidad_max);
+    const d = ocupacion / r.superficie_m2, xs = [0, u[0], u[1], u[2], u[2] * 1.5];
+    const ys = [0, UMBRALES.moderado, UMBRALES.alto, UMBRALES.critico, 1];
+    for (let k = 1; k < xs.length; k++) if (d <= xs[k]) return ys[k - 1] + (ys[k] - ys[k - 1]) * (d - xs[k - 1]) / (xs[k] - xs[k - 1]);
+    return 1;
+  }
+
+  /** Conectividad: uso de la red Wi-Fi coherente con la ocupación (sigue el % de ocupación,
+   *  o la densidad llevada a la misma escala en áreas abiertas, × un factor propio de la zona). */
   function wifi(id, ocupacion) {
     const r = R(id);
     const f = r.wifi_dispositivos_por_persona || 0;
     if (!f) return { aplica: false };
-    const cap = (r.wifi_ap || 0) * KPI.meta.wifi.clientes_por_ap;
     const disp = Math.round(ocupacion * f);
-    if (!cap) return { aplica: true, cobertura: false, dispositivos: disp, capacidad: 0, saturacion: 0, estado: 'sin' };
-    const sat = disp / cap;
-    return { aplica: true, cobertura: true, dispositivos: disp, capacidad: cap, saturacion: sat, estado: estado(sat), ap: r.wifi_ap };
+    const cubre = r.wifi_cobertura !== undefined ? r.wifi_cobertura : !!r.wifi_ap;
+    if (!cubre) return { aplica: true, cobertura: false, dispositivos: disp, saturacion: 0, estado: 'sin' };
+    const eq = equivalente(id, ocupacion);
+    const sat = Math.max(0, Math.min(1, eq * (r.wifi_factor || 1)));
+    return { aplica: true, cobertura: true, vecina: !r.wifi_ap, dispositivos: disp, saturacion: sat, estado: estado(sat), ap: r.wifi_ap };
   }
+
 
   /** Acumulado del día hasta la hora dada (para visitas y préstamos de la Biblioteca). */
   function acumuladoDia(id, fecha, escenarioForzado) {
@@ -211,7 +290,7 @@
     return R(id).perfiles[escenario][dia];
   }
 
-  const api = { init, estado, estadoZona, escenarioPara, perfilEn, ocupacionEnVivo, prediccion, alternativas, serieDia, grupo, horario, flujoHora, wifi, acumuladoDia,
+  const api = { init, estado, estadoZona, equivalente, pronosticoDia, diaCompleto, escenarioPara, perfilEn, ocupacionEnVivo, prediccion, alternativas, serieDia, grupo, horario, flujoHora, wifi, acumuladoDia,
     horaTxt, fechaISO, minutoDelDia, DIAS_JS, ESTADOS, INICIO_MIN, FIN_MIN };
   global.Simulacion = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

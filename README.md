@@ -41,7 +41,7 @@ python scripts/validar_geojson.py     # debe terminar con 0 errores
 python -m http.server 8000            # revisar en http://localhost:8000
 ```
 
-Lo capturado en QGIS siempre tiene prioridad: si llenas `capacidad_max`, `nivel`, `estado_fisico`, etc., el script deja de estimarlos.
+Las capacidades confirmadas en la hoja "Espacios y capacidades" se copian a `data/capacidades_confirmadas.csv` (id_recinto, capacidad_max, fuente) y tienen prioridad sobre todo lo demás. Después, lo capturado en QGIS tiene prioridad: si llenas `capacidad_max`, `nivel`, `estado_fisico`, etc., el script deja de estimarlos.
 
 ## Modelo de datos
 
@@ -63,6 +63,8 @@ Lo capturado en QGIS siempre tiene prioridad: si llenas `capacidad_max`, `nivel`
 
 - **Comportamiento por subtipo:** pasillos y accesos con picos en cambios de clase, plazas a mediodía, laboratorios por bloques de clase, auditorios por eventos, estacionamientos que se llenan en la mañana, etc. Se escala a la capacidad y se respeta el horario de cada zona (07:00–21:00 como máximo).
 - **En vivo:** el perfil de 15 min se interpola al minuto, con una variación determinística (todas las tabletas ven lo mismo). Nunca supera `capacidad_max`.
+- **Ritmo de clases:** bloques de 2 h que inician en hora impar (7:00 a 19:00), con el peso de cada bloque tomado de los horarios oficiales por grupo de la DCB; los salones bajan ~10 min en cada cambio de clase y los pasillos y accesos tienen su pico justo en esos minutos.
+- **Observaciones del equipo (24-nov):** salones con pico de 70–80 %; bibliotecas (Antonio Dovalí, Enrique Rivero Borrell, Enzo Levi) sí se saturan; salas PC-PUMA hasta ~80 %; laboratorios de Geomática con grupos de 4 a 12 y clase solo en algunos bloques; auditorios solo con eventos; exteriores y estacionamientos sin máximo; pasillos muy concurridos en los cambios de salón y calma durante la clase.
 - **Áreas abiertas:** no tienen cupo; se evalúan por densidad: libre < 0.10, cómodo, concurrido ≥ 0.30 y congestionado ≥ 0.60 personas/m² (circulaciones: 0.15 / 0.40 / 0.70).
 - **Sugerencia por ubicación:** si la zona donde está el usuario (GPS o “Estoy aquí”) está saturada o lo estará en la próxima hora, se proponen alternativas del mismo tipo (o áreas de descanso) ordenadas por espacio y distancia, con ruta en el mapa.
 - **Reglas:** R1 demanda ordinaria · R2 periodo de exámenes · R3 saturación crítica actual o prevista en la próxima hora, con alternativas del mismo grupo de uso.
@@ -72,7 +74,7 @@ Lo capturado en QGIS siempre tiene prioridad: si llenas `capacidad_max`, `nivel`
 - **Biblioteca:** visitas = flujo acumulado; préstamos = 0.18 por visita.
 - **Áreas de descanso:** todas las áreas comunes y verdes excepto estacionamientos, zona restringida, entrada del Anexo, Instituto de Ingeniería y Área de Posgrado; principales: Zona del tren, Jardineras FI y Plaza del Bicentenario.
 - **Histórico:** 12 semanas sintéticas del semestre 2027-1 (tendencia creciente y repunte en parciales).
-- **Índice de prioridad (P3):** 40 % densidad de uso, 40 % horas en ≥ 75 % y 20 % estado físico. Se calcula por zona y por edificio; personas y vehículos por separado.
+- **Índice de prioridad (P3):** 50 % densidad de uso y 50 % horas en ≥ 75 % (solo datos de ocupación; el estado físico ya no interviene). Se calcula por zona y por edificio; personas y vehículos por separado.
 
 ## Datos oficiales de la Red PC-PUMA
 

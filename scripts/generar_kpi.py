@@ -53,15 +53,16 @@ ESTADISTICAS_RED = {"periodo": "febrero–abril", "clientes_unicos": 107380, "cl
 
 # Exteriores (áreas comunes y verdes): nivel de servicio por densidad, personas/m² [cómodo, concurrido, congestionado]
 UMBRALES_DENSIDAD = {"circulacion": [0.15, 0.40, 0.70], "estancia": [0.10, 0.30, 0.60]}
-DENSIDAD_PICO = {"pasillo": 0.16, "acceso": 0.45, "plaza": 0.12, "descanso": 0.12, "jardin": 0.05, "cancha": 0.08}
+# pasillos muy concurridos en los cambios de salón; jardineras y descanso nunca llenos (observación del equipo)
+DENSIDAD_PICO = {"pasillo": 0.40, "acceso": 0.40, "plaza": 0.12, "descanso": 0.10, "jardin": 0.05, "cancha": 0.08}
 
 # Ocupación de edificios completos: m² construidos (huella × niveles) por persona, según uso principal
 M2_POR_PERSONA_EDIFICIO = {"aulas": 4.0, "laboratorios": 6.0, "biblioteca": 4.5, "administrativo": 10.0, "mixto": 5.0}
 MULT_EXAMENES_EDIFICIO = {"biblioteca": 1.30, "aulas": 0.95, "laboratorios": 0.85, "administrativo": 1.0, "mixto": 1.05}
 # Población presente simultánea máxima de la FI usada para calibrar capacidades (≈ 14,823 clientes de red por día, dato oficial)
 POBLACION_CALIBRACION = 13695   # matrícula de licenciatura 2024-1 (Memoria UNAM 2024)
-PICO_POR_USO = {"aulas": (0.86, 0.12), "laboratorios": (0.62, 0.15), "biblioteca": (0.58, 0.15),
-                "administrativo": (0.45, 0.12), "mixto": (0.60, 0.15)}   # (base, + según intensidad de red)
+PICO_POR_USO = {"aulas": (0.70, 0.10), "laboratorios": (0.48, 0.10), "biblioteca": (0.88, 0.12),
+                "administrativo": (0.40, 0.08), "mixto": (0.55, 0.10)}   # (base, + según intensidad de red)
 
 CALENDARIO = {"nota": "Periodo de exámenes supuesto; confirmar con el calendario escolar oficial.",
               "examenes": [{"inicio": "2026-11-30", "fin": "2026-12-11"}]}
@@ -71,8 +72,25 @@ def g(h, mu, sigma, amp):
     return amp * np.exp(-0.5 * ((h - mu) / sigma) ** 2)
 
 
-def cambios_de_clase(h, amp, sigma=0.18):
-    return sum(g(h, c, sigma, amp) for c in range(9, 22, 2))
+# Bloques de clase de la FI: 2 h, inicio en hora impar (horarios oficiales por grupo de la DCB, 2026-2).
+# Peso de cada bloque = proporción de grupos que inician a esa hora en la muestra oficial (7:00 3, 9:00 4, 11:00 3,
+# 13:00 3, 15:00 4, 17:00 4, 19:00 2 grupos), suavizado.
+BLOQUES = [7, 9, 11, 13, 15, 17, 19]
+PESO_BLOQUE = {7: 0.78, 9: 1.00, 11: 0.92, 13: 0.82, 15: 0.95, 17: 0.92, 19: 0.55}
+
+
+def cambios_de_clase(h, amp, sigma=0.12):
+    """Picos breves en los cambios de clase: al inicio de cada bloque (hora impar), con el peso de ese bloque."""
+    return sum(g(h, c, sigma, amp * (PESO_BLOQUE.get(c, 0.6))) for c in range(9, 22, 2))
+
+
+def patron_bloques(h, profundidad=0.35):
+    """Ocupación de salones: escalón por bloque con caída breve (~10 min) en cada cambio de clase."""
+    p = np.zeros_like(h)
+    for b in BLOQUES:
+        p = p + bloque(h, b - 0.1, b + 2 - 0.12, PESO_BLOQUE[b], 0.04)
+    caidas = sum(g(h, c, 0.07, profundidad) for c in range(9, 22, 2))
+    return np.clip(p * (1 - caidas), 0, 1)
 
 
 def bloque(h, ini, fin, nivel, suave=0.12):
@@ -94,17 +112,26 @@ def perfil_base(z, dia, semilla):
     r_d = rng_de(semilla, rid, dia)            # variación del día
     s, a = r_z.uniform(-0.6, 0.6), r_z.uniform(0.85, 1.15)
     if sub == "biblioteca":
+        # las bibliotecas sí se saturan (observación del equipo): pico 90–100 %
         p = 0.12 + g(h, 11 + s, 1.5, 0.50 * a) + g(h, 13.5, 1.0, 0.30) + g(h, 17 + s, 1.6, 0.55 * a)
+        p = p / p.max() * r_z.uniform(0.90, 1.0)
     elif sub == "computo":
-        p = 0.10 + g(h, 10 + s, 1.2, 0.55 * a) + g(h, 12.5 + s, 1.1, 0.70 * a) + g(h, 16 + s, 1.3, 0.60 * a) + g(h, 18.5, 1.0, 0.35)
+        # salas de cómputo de uso libre: se llenan en los huecos entre clases y en la tarde
+        p = 0.10 + g(h, 10.2 + s / 2, 1.0, 0.50 * a) + g(h, 13.2 + s / 2, 1.0, 0.75 * a) + g(h, 16.2 + s / 2, 1.1, 0.65 * a) \
+            + g(h, 18.5, 0.9, 0.35) + cambios_de_clase(h, 0.08, 0.15)
+        p = p / p.max() * r_z.uniform(0.70, 0.82)   # nunca se llenan: máximo ~80 % (observación del equipo)
     elif sub == "laboratorio":
-        p = np.full_like(h, 0.04)
+        # Labs de Geomática (observación del equipo): grupos de 4 a 12 personas, clase solo en algunos bloques;
+        # fuera de clase, 0 a 2 personas trabajando.
+        cap = max(1, int(z["capacidad_max"]))
+        p = np.full_like(h, 0.0)
         for ini in range(7, 21, 2):
             fija = (rid, dia, ini) in CLASES_FIJAS
-            if fija or (dia != "sab" and r_d.random() < 0.55):
-                p = p + bloque(h, ini + 0.05, ini + 1.9, 1.0 if fija else r_d.uniform(0.72, 1.0))
+            if fija or (dia != "sab" and r_d.random() < 0.32):
+                grupo = 12 if fija else r_d.integers(4, 13)
+                p = p + bloque(h, ini + 0.05, ini + 1.9, min(1.0, grupo / cap), 0.06)
             else:
-                p = p + bloque(h, ini + 0.05, ini + 1.9, r_d.uniform(0.04, 0.18))
+                p = p + bloque(h, ini + 0.05, ini + 1.9, r_d.integers(0, 3) / cap, 0.1)
     elif sub == "auditorio":
         p = np.zeros_like(h)
         if dia != "sab":
@@ -118,19 +145,21 @@ def perfil_base(z, dia, semilla):
     elif sub == "pasillo":
         p = 0.06 + g(h, 13.5, 2.0, 0.10) + cambios_de_clase(h, 0.75 * a, 0.12)
     elif sub == "acceso":
-        p = 0.05 + g(h, 7.6, 0.6, 0.75 * a) + g(h, 9, 0.5, 0.35) + g(h, 11, 0.4, 0.25) + g(h, 13, 0.4, 0.30) \
-            + g(h, 15, 0.6, 0.55) + g(h, 19.2, 0.7, 0.45)
+        # llegadas unos minutos antes de cada bloque (sobre todo 7:00 y 15:00) y salidas al terminar
+        p = 0.04 + sum(g(h, (7.1 if b == 7 else b - 0.15), (0.2 if b == 7 else 0.13), PESO_BLOQUE[b] * (1.25 if b == 7 else 0.85 if b == 15 else 0.45)) for b in BLOQUES) * a \
+            + g(h, 15.1, 0.2, 0.35) + g(h, 19.1, 0.25, 0.45) + g(h, 21.0, 0.15, 0.5)
     elif sub == "plaza":
-        p = 0.08 + g(h, 14 + s / 2, 1.4, 0.32 * a) + cambios_de_clase(h, 0.30, 0.2)
+        # plazas: comida (13–16 h) y ratos entre clases
+        p = 0.05 + g(h, 14.5 + s / 3, 1.0, 0.30 * a) + cambios_de_clase(h, 0.45, 0.16)
     elif sub in ("descanso", "estudio"):
-        p = 0.12 + g(h, 12 + s, 2.0, 0.45 * a) + g(h, 16.5, 1.5, 0.35)
+        p = 0.10 + g(h, 13.5 + s / 2, 1.6, 0.45 * a) + g(h, 17, 1.2, 0.25) + cambios_de_clase(h, 0.12, 0.2)
     elif sub == "jardin":
-        p = 0.05 + g(h, 13.5 + s / 2, 1.8, 0.45 * a) + g(h, 16.5, 1.2, 0.22)
+        p = 0.04 + g(h, 14 + s / 2, 1.2, 0.30 * a) + cambios_de_clase(h, 0.35, 0.18)
     elif sub == "cancha":
         p = 0.05 + g(h, 14, 1.2, 0.70) + g(h, 17.5, 1.2, 0.60)
     elif sub in ("estacionamiento", "motos"):
         llenado = r_z.uniform(7.7, 8.8)
-        tope = (0.99 if "PROFESORES" in rid else r_z.uniform(0.85, 0.97)) * (0.8 if sub == "motos" else 1)
+        tope = (r_z.uniform(0.78, 0.9) if "PROFESORES" in rid else r_z.uniform(0.55, 0.75)) * (0.75 if sub == "motos" else 1)
         p = 0.04 + tope * sig(h, llenado, 0.4)
         p = p * (1 - 0.30 * sig(h, 15, 0.6)) * (1 - 0.6 * sig(h, 19.3, 0.5))
     else:
@@ -138,7 +167,7 @@ def perfil_base(z, dia, semilla):
     # Exteriores: forma normalizada y escalada a una densidad pico realista
     if not z.get("id_edificio") and z["tipo"] in ("area_comun", "area_verde") and sub in DENSIDAD_PICO:
         cap_dens = 1 / {"pasillo": 1 / 0.7, "acceso": 1 / 0.7}.get(sub, 1 / 0.6)
-        p = p / max(p.max(), 1e-6) * DENSIDAD_PICO[sub] * r_z.uniform(0.8, 1.2) / cap_dens
+        p = p / max(p.max(), 1e-6) * DENSIDAD_PICO[sub] * r_z.uniform(0.85, 1.35) / cap_dens
     # Horario propio de la zona
     ap, ci = (int(x[:2]) + int(x[3:]) / 60 for x in (z["hora_apertura"], z["hora_cierre"]))
     return p * np.clip((h - ap) / 0.5 + 0.5, 0, 1) * np.clip((ci - h) / 0.5 + 0.5, 0, 1) * (h >= ap) * (h <= ci)
@@ -153,10 +182,17 @@ def perfil_edificio(e, dia, semilla, rel_oficial, pico):
         horas_of = np.arange(7, 22)
         tipica = 0.15 + g(h, 10.5, 1.6, 0.55) + g(h, 13, 1.3, 0.75) + g(h, 16.5, 1.6, 0.6)
         tipica = tipica / tipica.max()
+        env = np.interp(h, horas_of, rel_oficial)
         if uso == "biblioteca":
             tipica = 0.3 + g(h, 11, 1.6, 0.5) + g(h, 17, 1.8, 0.7)
             tipica = tipica / tipica.max()
-        p = (0.6 * np.interp(h, horas_of, rel_oficial) + 0.4 * tipica) * pico
+            p = (0.6 * env + 0.4 * tipica) * pico
+        elif uso in ("aulas", "mixto", "laboratorios"):
+            # salones al ritmo de los bloques de clase; la curva oficial modula la intensidad del día
+            peso = {"aulas": 1.0, "mixto": 0.6, "laboratorios": 0.5}[uso]
+            p = (peso * patron_bloques(h) * (0.65 + 0.35 * env) + (1 - peso) * env) * pico
+        else:
+            p = (0.6 * env + 0.4 * tipica) * pico
         p = p + cambios_de_clase(h, 0.05, 0.15) * (p > 0.2)
     else:
         r = rng_de(semilla, e["id_edificio"])
@@ -166,7 +202,7 @@ def perfil_edificio(e, dia, semilla, rel_oficial, pico):
         elif uso == "administrativo":
             p = (0.05 + bloque(h, 8.5, 15, 0.6 * a) + bloque(h, 16, 19, 0.35 * a)) * (pico or 0.5) / 0.65
         else:
-            p = (0.08 + bloque(h, 7.2, 20.5, 0.5 * a) + g(h, 12, 2.5, 0.2) + cambios_de_clase(h, 0.08, 0.15)) * (pico or 0.8) / 0.8
+            p = patron_bloques(h) * (pico or 0.8) * a
     p = p * FACTOR_DIA[dia]
     return p * np.clip((h - 7) / 0.5 + 0.3, 0, 1) * np.clip((21 - h) / 0.5 + 0.3, 0, 1)
 
@@ -191,6 +227,18 @@ def fmt_hora(x):
 def norm(v):
     v = np.asarray(v, dtype=float)
     return (v - v.min()) / (v.max() - v.min()) if len(v) and v.max() > v.min() else v * 0
+
+
+def carga_red(ocups, r):
+    """Uso de la red Wi-Fi (0–1), coherente con la ocupación: sigue el % de ocupación
+    (o la densidad, en áreas abiertas, llevada a la misma escala) × un factor por zona (0.92–1.08)."""
+    if r.get("umbrales_densidad"):
+        u = r["umbrales_densidad"]
+        eq = np.interp(ocups / r["superficie_m2"], [0, u[0], u[1], u[2], u[2] * 1.5],
+                       [0, UMBRALES["moderado"], UMBRALES["alto"], UMBRALES["critico"], 1.0])
+    else:
+        eq = ocups / r["capacidad_max"]
+    return np.clip(eq * r["wifi_factor"], 0, 1)
 
 
 def prioridad(ix):
@@ -235,7 +283,12 @@ def main():
                 frac = np.clip(base * ruido_suave(len(HORAS), rng_de(sem, rid, dia, esc)), 0, 1)
                 ocup = np.minimum(np.round(frac * cap).astype(int), cap)
                 sat = ocup / cap
-                est_ = [estado_densidad(o / z["superficie_m2"], umb) for o in ocup] if umb else [estado(x) for x in sat]
+                if umb:
+                    est_ = [estado_densidad(o / z["superficie_m2"], umb) for o in ocup]
+                elif z["tipo"] == "estacionamiento":   # sin máximo: solo poca o mucha demanda, nunca alerta
+                    est_ = [0 if x < 0.45 else 1 for x in sat]
+                else:
+                    est_ = [estado(x) for x in sat]
                 perfiles[esc][dia] = {"ocupacion": ocup.tolist(), "saturacion": [round(float(x), 2) for x in sat], "estado": est_}
         # Puntos de acceso: oficiales si hay datos de la Red PC-PUMA, si no, estimados
         ap, fuente_wifi = z.get("wifi_ap"), "estimado"
@@ -254,8 +307,9 @@ def main():
             "id_edificio": z.get("id_edificio"), "nivel": z.get("nivel", 0), "estado_fisico": z.get("estado_fisico"),
             "horario": {"apertura": z["hora_apertura"], "cierre": z["hora_cierre"]}, "perfiles": perfiles,
             "permanencia_min": PERMANENCIA_MIN.get(z["subtipo"], 20), "descanso": z.get("descanso"), "umbrales_densidad": umb,
-            "wifi_ap": ap, "wifi_fuente": fuente_wifi, "red_oficial_relativo": red_rel,
-            "wifi_dispositivos_por_persona": 0 if z["tipo"] == "estacionamiento" else WIFI["dispositivos_por_persona"][
+            "sin_maximo": bool(umb) or z["tipo"] == "estacionamiento",
+            "wifi_ap": ap, "wifi_fuente": fuente_wifi if ap or not red_rel else "señal de antenas cercanas (Red PC-PUMA)", "wifi_cobertura": bool(ap or red_rel or z["tipo"] == "estacionamiento"), "wifi_factor": round((0.35 if z["tipo"] == "estacionamiento" else 1) * (0.92 + 0.16 * (zlib.crc32(rid.encode()) % 1000) / 1000), 3), "red_oficial_relativo": red_rel,
+            "wifi_dispositivos_por_persona": 0.3 if z["tipo"] == "estacionamiento" else WIFI["dispositivos_por_persona"][
                 "computo" if z["subtipo"] in ("computo", "laboratorio") else ("interior" if z.get("id_edificio") else "exterior")],
         }
 
@@ -292,7 +346,8 @@ def main():
             "capacidad_max": cap, "superficie_m2": round(e["superficie_m2"] * max(1, e["niveles"]), 1), "niveles": e["niveles"],
             "id_edificio": eid, "nivel": 0, "estado_fisico": e.get("estado_fisico"),
             "horario": {"apertura": "07:00", "cierre": "21:00"}, "perfiles": perfiles, "permanencia_min": 120,
-            "wifi_ap": ap_ed.get(eid, 0), "wifi_fuente": "oficial" if ap_ed.get(eid) else "sin antenas registradas",
+            "wifi_ap": ap_ed.get(eid, 0), "wifi_factor": round(0.92 + 0.16 * (zlib.crc32(eid.encode()) % 1000) / 1000, 3), "wifi_fuente": "oficial" if ap_ed.get(eid) else ("señal de antenas cercanas (Red PC-PUMA)" if rel else "señal de antenas cercanas (estimado)"),
+            "wifi_cobertura": True,
             "wifi_dispositivos_por_persona": 0.8, "perfil_fuente": "curva oficial Red PC-PUMA" if rel else f"perfil típico ({uso})",
             "red_oficial_relativo": rel,
         }
@@ -327,25 +382,28 @@ def main():
             f["flujo_pico_h"] = round(float(por_hora.max(axis=1).mean()))
             f["flujo_dia"] = round(float(ocups.sum()) * paso_h * 60 / r["permanencia_min"] / 5)
             if r["wifi_dispositivos_por_persona"]:
-                cap_wifi = (r["wifi_ap"] or 0) * WIFI["clientes_por_ap"]
                 disp = ocups * r["wifi_dispositivos_por_persona"]
                 f["wifi_dispositivos_pico"] = round(float(disp.max(axis=1).mean()))
-                f["wifi_sat_pico"] = round(float(disp.max(axis=1).mean()) / cap_wifi, 2) if cap_wifi else None
-                f["wifi_horas_saturado"] = round(float((disp >= 0.9 * cap_wifi).sum() * paso_h / 5), 2) if cap_wifi else None
+                if r["wifi_cobertura"]:
+                    uso = carga_red(ocups, r)
+                    f["wifi_sat_pico"] = round(float(uso.max(axis=1).mean()), 2)
+                    f["wifi_horas_saturado"] = round(float((uso >= UMBRALES["critico"]).sum() * paso_h / 5), 2)
+                else:
+                    f["wifi_sat_pico"] = None
+                    f["wifi_horas_saturado"] = None
             if r["subtipo"] == "biblioteca":
                 f["visitas_dia"] = f["flujo_dia"]
                 f["prestamos_dia"] = round(f["flujo_dia"] * PRESTAMOS_POR_VISITA)
             if r.get("equipos"):
                 f["personas_por_equipo_pico"] = round(float(ocups.max(axis=1).mean()) / r["equipos"], 2)
             filas[rid] = f
-        # Índice de prioridad: 40 % densidad, 40 % horas en saturación alta, 20 % estado físico.
+        # Índice de prioridad: 50 % densidad de uso, 50 % horas en saturación alta (solo datos de ocupación).
         # Se normaliza por separado para personas y para vehículos (no son comparables).
         for unidad in ("personas", "vehiculos"):
             ids = [i for i in filas if not i.startswith("ED:") and recintos[i]["unidad"] == unidad]
             if not ids:
                 continue
-            ix = 0.4 * norm([filas[i]["densidad_uso"] for i in ids]) + 0.4 * norm([filas[i]["horas_alto_dia"] for i in ids]) \
-                + 0.2 * np.array([PUNTAJE_ESTADO.get(recintos[i]["estado_fisico"], 0.5) for i in ids])
+            ix = 0.5 * norm([filas[i]["densidad_uso"] for i in ids]) + 0.5 * norm([filas[i]["horas_alto_dia"] for i in ids])
             for i, v in zip(ids, ix):
                 filas[i]["indice_prioridad"] = round(float(v), 3)
                 filas[i]["prioridad"] = prioridad(v)
@@ -367,8 +425,7 @@ def main():
                       "capacidad_total": edificios_sim[e]["capacidad_max"],
                       "personas_hora_recintos": round(sum(filas[i]["personas_hora_dia"] for i in rs), 1)})
             agg[e] = f
-        ix = 0.4 * norm([agg[e]["densidad_uso"] for e in eids]) + 0.4 * norm([agg[e]["horas_alto_dia"] for e in eids]) \
-            + 0.2 * np.array([PUNTAJE_ESTADO.get(edificios[e].get("estado_fisico"), 0.5) for e in eids])
+        ix = 0.5 * norm([agg[e]["densidad_uso"] for e in eids]) + 0.5 * norm([agg[e]["horas_alto_dia"] for e in eids])
         for e, v in zip(eids, ix):
             agg[e]["indice_prioridad"] = round(float(v), 3)
             agg[e]["prioridad"] = prioridad(v)
@@ -400,9 +457,12 @@ def main():
             ids = [i for i, r in recintos.items() if r["unidad"] == "personas" and
                    (conj_ed.get(r["id_edificio"]) == conj or (not r["id_edificio"] and
                     next((z.get("conjunto") for z in zonas if z["id_recinto"] == i), None) == conj))]
+            # Personas en el conjunto: edificios completos + zonas exteriores (los recintos ya están dentro de su edificio)
+            fuentes = [edificios_sim[e] for e in edificios_sim if conj_ed.get(e) == conj] + \
+                      [recintos[i] for i in ids if not recintos[i]["id_edificio"]]
             sim = np.zeros(15)
-            for i in ids:
-                o = np.mean([recintos[i]["perfiles"]["ordinario"][d]["ocupacion"] for d in DIAS[:5]], axis=0)
+            for r_ in fuentes:
+                o = np.mean([r_["perfiles"]["ordinario"][d]["ocupacion"] for d in DIAS[:5]], axis=0)
                 sim += np.array([o[k * 4:(k + 1) * 4].mean() for k in range(15)])
             sim = sim / sim.max()
             validacion[conj] = {"correlacion": round(float(np.corrcoef(sim, datos["relativo"])[0, 1]), 3),
@@ -421,7 +481,7 @@ def main():
             "dias": DIAS, "escenarios": ["ordinario", "examenes"], "estados": ESTADOS, "umbrales": UMBRALES,
             "calendario": CALENDARIO, "wifi": WIFI, "prestamos_por_visita": PRESTAMOS_POR_VISITA,
             "historico": {"semanas": SEMANAS, "nota": "Histórico sintético del semestre: tendencia creciente y repunte en parciales."},
-            "indice_prioridad": "40 % densidad de uso + 40 % horas en saturación ≥ 75 % (normalizadas) + 20 % estado físico; alta ≥ 0.60, media ≥ 0.35",
+            "indice_prioridad": "50 % densidad de uso + 50 % horas en saturación ≥ 75 % (normalizadas); alta ≥ 0.60, media ≥ 0.35",
         },
         "recintos": recintos,
         "edificios": resumen_ed,

@@ -93,7 +93,6 @@ button, select, input { font: inherit; }
 .btn-mapa.activo { background: var(--azul); color: #fff; }
 .zooms { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .btn-chico { min-height: 40px; font-size: .8rem; padding: 0 10px; border-width: 1px; }
-.modo-aqui #mapa { cursor: crosshair; }
 
 .leyenda {
   position: absolute; z-index: 500; right: 10px; bottom: 24px; max-width: 45%; background: rgba(255,255,255,.95);
@@ -210,11 +209,12 @@ button, select, input { font: inherit; }
 
 /* Selector de planta, como botonera de elevador */
 .pisos {
-  position: absolute; z-index: 500; left: 10px; top: 96px; display: flex; flex-direction: column; gap: 6px; align-items: stretch;
-  background: rgba(0,43,92,.92); padding: 8px; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  position: absolute; z-index: 500; left: 10px; top: 96px; display: flex; flex-direction: column; gap: 3px; align-items: stretch;
+  background: rgba(0,43,92,.92); padding: 5px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,.25);
 }
-.pisos-tit { color: var(--oro); font-size: .68rem; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: .5px; }
-.piso { min-width: 52px; min-height: 44px; border-radius: 10px; border: 2px solid rgba(255,255,255,.35); background: transparent; color: #fff; font-weight: 800; cursor: pointer; }
+.pisos-tit { color: var(--oro); font-size: .56rem; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: .4px; }
+.piso { min-width: 36px; min-height: 28px; padding: 0 4px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,.3); background: transparent; color: #fff; font-weight: 800; font-size: .78rem; cursor: pointer; }
+.piso[data-piso="todas"] { font-size: .62rem; }
 .piso.activo { background: var(--oro); border-color: var(--oro); color: var(--azul); }
 
 /* Etiquetas de edificio y zonas */
@@ -228,7 +228,7 @@ button, select, input { font: inherit; }
 .link { background: none; border: 0; padding: 0; color: var(--azul); font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--borde); }
 .calor tr.sep td { background: transparent; padding: 2px; }
 .calor th.rec .link { font-weight: 600; color: var(--tinta); text-decoration: none; }
-@media (max-width: 600px) { .pisos { top: 84px; padding: 6px; } .piso { min-width: 44px; min-height: 40px; } }
+@media (max-width: 600px) { .pisos { top: 84px; } }
 
 .modos { display: flex; background: #fff; border: 2px solid var(--azul); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .modo { min-height: var(--toque); padding: 0 12px; border: 0; background: #fff; color: var(--azul); font-weight: 700; cursor: pointer; }
@@ -243,13 +243,48 @@ button, select, input { font: inherit; }
 .detalle .fila { width: 100%; margin-bottom: 8px; }
 
 /* Distintivo de antenas por edificio */
-.ap-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 99px;
+.ap-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border-radius: 99px;
   background: #fff; color: #1d4f99; border: 2px solid #1d4f99; box-shadow: 0 2px 6px rgba(0,0,0,.25); font-size: .8rem; white-space: nowrap; cursor: pointer; }
-.ap-badge svg { width: 16px; height: 16px; }
-.ap-badge b { font-weight: 900; }
-.leyenda .ap-badge.ap-ley { padding: 0 6px; font-size: .65rem; border-width: 1px; box-shadow: none; margin-right: 4px; }
-.zoom-muy-lejos .ap-badge b { display: none; }
-.zoom-muy-lejos .ap-badge { padding: 3px; }
+.ap-badge svg { width: 17px; height: 17px; }
+.leyenda .ap-badge.ap-ley { padding: 1px; border-width: 1px; box-shadow: none; margin-right: 6px; vertical-align: middle; }
+.leyenda .ap-badge.ap-ley svg { width: 11px; height: 11px; }
+.zoom-muy-lejos .ap-badge { padding: 2px; }
+.zoom-muy-lejos .ap-badge svg { width: 12px; height: 12px; }
+
+/* Pronóstico de la próxima hora */
+.pron { background: #fff; border: 1px solid #e1e6ee; border-radius: 14px; padding: 12px; }
+.pron-tit { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; font-size: 1rem; }
+.pron-tit small { font-weight: 500; font-size: .85rem; }
+.pron-tit.bien { background: #e3f4ea; color: #1d5e37; }
+.pron-tit.medio { background: #fdeedd; color: #7a4310; }
+.pron-tit.mal { background: #fbe4e4; color: #8a1f1f; }
+.pron-tit.neutro { background: #eef1f5; color: #4b5563; }
+.pron-ico { display: inline-grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; color: #fff; font-weight: 900; font-size: 1.05rem; }
+.bien .pron-ico { background: var(--bajo, #2e9e5b); } .medio .pron-ico { background: #ee8a2b; } .mal .pron-ico { background: #d43d3d; } .neutro .pron-ico { background: #9aa3ad; }
+.pron-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pron-chip { display: flex; flex-direction: column; padding: 6px 12px; border-radius: 10px; background: #f1f4f9; font-size: .74rem; color: var(--gris); }
+.pron-chip b { font-size: .95rem; color: #1f2937; }
+.pron-chip.bien { background: #e3f4ea; } .pron-chip.bien b { color: #1d5e37; }
+.pron-dia { position: relative; display: grid; grid-template-columns: repeat(15, minmax(28px, 1fr)); gap: 4px; margin: 14px 0 6px; overflow-x: auto; padding-top: 4px; }
+.pron-col { display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; z-index: 1; }
+.pron-val { font-weight: 800; font-size: .7rem; color: #1f2937; height: 14px; }
+.pron-barra { width: 100%; max-width: 30px; height: 130px; background: #eef1f5; border-radius: 6px; display: flex; align-items: flex-end; overflow: hidden; }
+.pron-barra span { width: 100%; border-radius: 6px 6px 0 0; transition: height .4s ease; }
+.pron-hora { font-size: .72rem; color: var(--gris); height: 16px; }
+.pron-col.pasado .pron-barra span { opacity: .4; }
+.pron-col.pasado .pron-val { color: #9aa3ad; font-weight: 600; }
+.pron-col.ahora .pron-hora { color: var(--azul); font-weight: 800; }
+.pron-col.ahora .pron-barra { outline: 2px solid var(--oro); outline-offset: 2px; }
+.pron-umbral { position: absolute; left: 0; right: 0; border-top: 1.5px dashed; z-index: 2; pointer-events: none; }
+.pron-umbral.alto { border-color: #ee8a2b; } .pron-umbral.critico { border-color: #d43d3d; }
+.pron-ley { display: flex; flex-wrap: wrap; gap: 12px; font-size: .72rem; color: var(--gris); }
+.pron-ley i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; background: #4a86cf; }
+.pron-ley i.lin { background: none; border-top: 2px dashed; height: 0; width: 18px; }
+.pron-ley i.lin.alto { border-color: #ee8a2b; } .pron-ley i.lin.critico { border-color: #d43d3d; }
+.pron-col.pasado .pron-barra span { opacity: .35; }
+.pron-cod { white-space: nowrap; }
+.pron-pie { margin: 8px 0 0; font-size: .75rem; color: var(--gris); }
+.pron-cod { margin-left: 4px; padding: 1px 6px; border-radius: 6px; background: #eef1f5; font-weight: 700; font-size: .7rem; }
 
 /* Botones extra de la barra */
 .ctl-rojo { background: #d43d3d; color: #fff; }
@@ -288,3 +323,33 @@ button, select, input { font: inherit; }
 .sug-cab { font-weight: 700; color: var(--azul); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .sugerencia p { margin: 6px 0; }
 .sugerencia .fila { width: 100%; margin-top: 6px; }
+
+/* Simbología por tipo de espacio */
+.ico-park { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: #1d4f99; color: #fff; font-weight: 900; font-size: .9rem; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); line-height: 1; }
+.ico-park small { display: block; font-size: .42rem; font-weight: 700; margin-top: -2px; }
+.ico-park.mini { width: 14px; height: 14px; font-size: .55rem; border-width: 1px; border-radius: 3px; margin-right: 6px; vertical-align: middle; box-shadow: none; }
+.zoom-muy-lejos .ico-park { transform: scale(.75); }
+.leyenda svg.muestra { width: 22px; height: 14px; margin-right: 6px; vertical-align: middle; flex: 0 0 auto; }
+.leyenda .tit small { font-weight: 400; font-size: .65rem; }
+.piso.vacio { opacity: .55; border-style: dashed; }
+.res-lista { display: grid; gap: 6px; margin-top: 10px; }
+.res-item { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 6px 8px; background: #f6f8fb; border-radius: 8px; }
+.res-item small { grid-column: 2; color: var(--gris); }
+
+/* Aviso flotante de saturación con sugerencia */
+.aviso { position: absolute; z-index: 650; left: 12px; bottom: 26px; width: min(390px, calc(100% - 24px));
+  background: #fff; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.3); border-top: 6px solid var(--critico, #d43d3d); padding: 12px 14px; animation: subeAviso .3s ease; }
+@keyframes subeAviso { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.aviso-x { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 1.1rem; cursor: pointer; color: var(--gris); min-width: 36px; min-height: 36px; }
+.aviso-cab { display: flex; gap: 10px; align-items: center; padding-right: 30px; font-size: .98rem; }
+.aviso-ico { display: inline-grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; background: #d43d3d; color: #fff; font-weight: 900; }
+.aviso-txt { margin: 8px 0 6px; font-size: .85rem; color: var(--gris); }
+.aviso-alt { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 10px; text-align: left; padding: 9px 10px; margin-top: 6px;
+  border: 1px solid #e1e6ee; border-radius: 10px; background: #f8fafc; cursor: pointer; font: inherit; min-height: 48px; }
+.aviso-alt.prim { background: #e3f4ea; border-color: #b9e0c8; }
+.aviso-alt small { color: var(--gris); }
+
+/* Contexto común de las pestañas y mapa de calor de hoy */
+.ctx-dia { margin: -4px 0 10px; padding: 6px 10px; border-radius: 8px; background: var(--azul-claro, #e8eef7); color: var(--azul); font-size: .78rem; font-weight: 600; }
+.calor td.pasado { opacity: .45; }
+.calor th.ahora { color: var(--azul); font-weight: 900; }

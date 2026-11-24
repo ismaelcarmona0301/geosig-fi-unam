@@ -101,7 +101,8 @@ REGLAS_AREA = [
 # Exteriores: no tienen un "cupo"; la capacidad de referencia es la superficie × densidad de congestión
 # (0.7 personas/m² en circulaciones, 0.6 en estancias), y el estado se lee por nivel de servicio (personas/m²).
 M2_POR_UNIDAD = {"pasillo": 1 / 0.7, "acceso": 1 / 0.7, "plaza": 1 / 0.6, "descanso": 1 / 0.6, "cancha": 1 / 0.6,
-                 "estacionamiento": 25.0, "motos": 3.0,
+                 # estacionamientos: más de la mitad de la superficie son carriles de circulación (observación del equipo)
+                 "estacionamiento": 40.0, "motos": 10.0,
                  "computo": 3.5, "laboratorio": 4.5, "biblioteca": 4.0, "auditorio": 1.2,
                  "cafeteria": 2.5, "sanitarios": 3.0, "jardin": 1 / 0.6}
 MATERIAL = {"pasillo": "concreto", "acceso": "concreto", "plaza": "concreto", "descanso": "adoquin",
@@ -110,6 +111,15 @@ ID_CONOCIDOS = {r"fotogrametr": "LAB_FOTO", r"\bsig\b": "LAB_SIG",
                 r"c[oó]mputo geom": "LAB_CG", r"pc.?puma": "PCPUMA", r"biblioteca": "BIB"}
 
 revision = []
+
+# Capacidades confirmadas por el equipo (hoja "Espacios y capacidades"): tienen prioridad sobre QGIS y estimaciones
+CONFIRMADAS = {}
+_ruta_conf = Path(__file__).resolve().parent.parent / "data" / "capacidades_confirmadas.csv"
+if _ruta_conf.exists():
+    with _ruta_conf.open(encoding="utf-8") as _fh:
+        for _r in csv.DictReader(_fh):
+            if _r.get("id_recinto") and _r.get("capacidad_max"):
+                CONFIRMADAS[_r["id_recinto"].strip()] = (int(float(_r["capacidad_max"])), _r.get("fuente", "confirmado"))
 
 
 def limpiar(txt):
@@ -217,6 +227,8 @@ def preparar_edificios():
         if not uso:
             uso = "aulas"
             est.append("uso_principal")
+        if uso == "biblioteca" and re.match(r"^Edificio\s+\w+$", nombre) and descripcion:
+            nombre = f"{descripcion} (Edificio {id_ed})"
         props = {
             "id_edificio": id_ed, "nombre": nombre, "niveles": int(float(niveles)),
             "conjunto": obtener(pr, "conjunto") or conjunto_de(f["geometry"]),
@@ -258,6 +270,8 @@ def preparar_recintos(edificios, ids):
         est = []
         nombre = limpiar(obtener(pr, "nombre", "Nombre") or "Recinto sin nombre")
         rid = obtener(pr, "id_recinto") or id_recinto(nombre, "", ids)
+        # las salas de cómputo son salas PC-PUMA (confirmado por el equipo); el id se conserva
+        nombre = re.sub(r"^Sala de cómputo", "Sala PC-PUMA", nombre)
         tipo = obtener(pr, "tipo")
         subtipo = obtener(pr, "subtipo")
         if not tipo or not subtipo:
@@ -395,6 +409,12 @@ def main():
     ids = set()
     recintos = preparar_recintos(edificios, ids)
     areas = preparar_areas(ids)
+    for f in recintos + areas:
+        pr = f["properties"]
+        if pr["id_recinto"] in CONFIRMADAS:
+            pr["capacidad_max"], pr["fuente_capacidad"] = CONFIRMADAS[pr["id_recinto"]]
+            pr["campos_estimados"] = [c for c in pr["campos_estimados"] if c != "capacidad_max"]
+            anotar(pr.get("tipo") and "recintos", pr["id_recinto"], "capacidad_max", pr["capacidad_max"], "confirmado")
     # conjunto de los recintos = el de su edificio
     conj = {e["properties"]["id_edificio"]: e["properties"]["conjunto"] for e in edificios}
     for r in recintos:

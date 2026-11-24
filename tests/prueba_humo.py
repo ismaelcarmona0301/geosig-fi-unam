@@ -29,7 +29,7 @@ FAKE_L = r"""
   tileLayer(){ return capa(); },
   geoJSON(geo,o){ const g=grupo(); (geo.features||[]).forEach(f=>{const c=capa(); o.onEachFeature&&o.onEachFeature(f,c); g.addLayer(c);}); return g; },
   marker(){return capa()}, circle(){return capa()}, divIcon(o){return o}, latLng(a,b){return {lat:a,lng:b}},
-  featureGroup(){return capa()}, layerGroup(){return capa()}, polyline(){return capa()}, latLngBounds(){return {}}, DomEvent:{stopPropagation(){}}
+  featureGroup(){return capa()}, layerGroup(){return grupo()}, polyline(){return capa()}, latLngBounds(){return {}}, DomEvent:{stopPropagation(){}}
  };
 })();"""
 
@@ -98,10 +98,10 @@ def main():
                 pag.screenshot(path=str(SALIDA / f'{nombre}_mantto2.png'), full_page=True)
                 pag.evaluate("GeoSIG.seleccionar('BIB')")
                 bib = pag.inner_text('#detalle')
-                pag.click('[data-modo="prioridad"]')
+                pag.click('[data-modo="ocupacion"]')
                 pag.evaluate("GeoSIG.seleccionar('AC_TREN')")
                 pag.screenshot(path=str(SALIDA / f'{nombre}_tren.png'), full_page=True)
-                pag.click('#btn-critico')
+                pag.evaluate('GeoSIG.escenarioCritico()')
                 pag.click('#btn-guia')
                 for k in range(8):
                     pag.click('#guia-sig')

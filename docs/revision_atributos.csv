@@ -21,7 +21,7 @@ edificios,X,uso_principal,laboratorios,capturado
 edificios,X,superficie_m2,1467.9,calculado
 edificios,X,estado_fisico,regular,estimado
 edificios,L,id_edificio,L,capturado
-edificios,L,nombre,Edificio L,capturado
+edificios,L,nombre,Biblioteca Enrique Rivero Borrell (Edificio L),capturado
 edificios,L,niveles,3,capturado
 edificios,L,conjunto,sur,calculado
 edificios,L,uso_principal,biblioteca,capturado
@@ -119,7 +119,7 @@ edificios,V,uso_principal,laboratorios,capturado
 edificios,V,superficie_m2,496.1,calculado
 edificios,V,estado_fisico,bueno,estimado
 edificios,W,id_edificio,W,capturado
-edificios,W,nombre,Edificio W,capturado
+edificios,W,nombre,Biblioteca Enzo Levi (Edificio W),capturado
 edificios,W,niveles,3,capturado
 edificios,W,conjunto,sur,calculado
 edificios,W,uso_principal,biblioteca,capturado
@@ -182,7 +182,7 @@ edificios,U,uso_principal,aulas,capturado
 edificios,U,superficie_m2,1293.7,calculado
 edificios,U,estado_fisico,bueno,estimado
 recintos,SALA_COMPUTO_2,id_recinto,SALA_COMPUTO_2,capturado
-recintos,SALA_COMPUTO_2,nombre,Sala de cómputo 2,capturado
+recintos,SALA_COMPUTO_2,nombre,Sala PC-PUMA 2,capturado
 recintos,SALA_COMPUTO_2,tipo,sala_computo,estimado
 recintos,SALA_COMPUTO_2,subtipo,computo,estimado
 recintos,SALA_COMPUTO_2,id_edificio,M,capturado
@@ -221,7 +221,7 @@ recintos,LAB_FOTO,hora_cierre,21:00,capturado
 recintos,LAB_FOTO,estado_fisico,malo,estimado
 recintos,LAB_FOTO,wifi_ap,1,estimado
 recintos,SALA_COMPUTO_4,id_recinto,SALA_COMPUTO_4,capturado
-recintos,SALA_COMPUTO_4,nombre,Sala de cómputo 4,capturado
+recintos,SALA_COMPUTO_4,nombre,Sala PC-PUMA 4,capturado
 recintos,SALA_COMPUTO_4,tipo,sala_computo,estimado
 recintos,SALA_COMPUTO_4,subtipo,computo,estimado
 recintos,SALA_COMPUTO_4,id_edificio,T,capturado
@@ -247,7 +247,7 @@ recintos,AUDITORIO_RAUL_J,hora_cierre,21:00,capturado
 recintos,AUDITORIO_RAUL_J,estado_fisico,malo,estimado
 recintos,AUDITORIO_RAUL_J,wifi_ap,6,estimado
 recintos,SALA_COMPUTO_1,id_recinto,SALA_COMPUTO_1,capturado
-recintos,SALA_COMPUTO_1,nombre,Sala de cómputo 1,capturado
+recintos,SALA_COMPUTO_1,nombre,Sala PC-PUMA 1,capturado
 recintos,SALA_COMPUTO_1,tipo,sala_computo,estimado
 recintos,SALA_COMPUTO_1,subtipo,computo,estimado
 recintos,SALA_COMPUTO_1,id_edificio,E,capturado
@@ -299,7 +299,7 @@ recintos,AULA_MAGNA,hora_cierre,21:00,capturado
 recintos,AULA_MAGNA,estado_fisico,bueno,estimado
 recintos,AULA_MAGNA,wifi_ap,3,estimado
 recintos,SALA_COMPUTO_3,id_recinto,SALA_COMPUTO_3,capturado
-recintos,SALA_COMPUTO_3,nombre,Sala de cómputo 3,capturado
+recintos,SALA_COMPUTO_3,nombre,Sala PC-PUMA 3,capturado
 recintos,SALA_COMPUTO_3,tipo,sala_computo,estimado
 recintos,SALA_COMPUTO_3,subtipo,computo,estimado
 recintos,SALA_COMPUTO_3,id_edificio,I,capturado
@@ -358,7 +358,7 @@ areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,nombre,Estacionamiento Profesores 
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,tipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,subtipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,simular,True,estimado
-areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,capacidad_max,287,estimado
+areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,capacidad_max,179,estimado
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,unidad,vehiculos,capturado
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,superficie_m2,7165.2,calculado
 areas_comunes,EST_PROFESORES_ANEXO_INGENIERIA,conjunto,sur,calculado
@@ -371,7 +371,7 @@ areas_comunes,EST_EDIFICIO_J,nombre,Estacionamiento Edificio J,capturado
 areas_comunes,EST_EDIFICIO_J,tipo,estacionamiento,estimado
 areas_comunes,EST_EDIFICIO_J,subtipo,estacionamiento,estimado
 areas_comunes,EST_EDIFICIO_J,simular,True,estimado
-areas_comunes,EST_EDIFICIO_J,capacidad_max,246,estimado
+areas_comunes,EST_EDIFICIO_J,capacidad_max,154,estimado
 areas_comunes,EST_EDIFICIO_J,unidad,vehiculos,capturado
 areas_comunes,EST_EDIFICIO_J,superficie_m2,6157.8,calculado
 areas_comunes,EST_EDIFICIO_J,conjunto,sur,calculado
@@ -384,7 +384,7 @@ areas_comunes,EST_PROFESORES_FI,nombre,Estacionamiento Profesores FI,capturado
 areas_comunes,EST_PROFESORES_FI,tipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES_FI,subtipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES_FI,simular,True,estimado
-areas_comunes,EST_PROFESORES_FI,capacidad_max,88,estimado
+areas_comunes,EST_PROFESORES_FI,capacidad_max,55,estimado
 areas_comunes,EST_PROFESORES_FI,unidad,vehiculos,capturado
 areas_comunes,EST_PROFESORES_FI,superficie_m2,2212.5,calculado
 areas_comunes,EST_PROFESORES_FI,conjunto,norte,calculado
@@ -449,7 +449,7 @@ areas_comunes,EST_PROFESORES,nombre,Estacionamiento de Profesores,capturado
 areas_comunes,EST_PROFESORES,tipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES,subtipo,estacionamiento,estimado
 areas_comunes,EST_PROFESORES,simular,True,estimado
-areas_comunes,EST_PROFESORES,capacidad_max,89,estimado
+areas_comunes,EST_PROFESORES,capacidad_max,56,estimado
 areas_comunes,EST_PROFESORES,unidad,vehiculos,capturado
 areas_comunes,EST_PROFESORES,superficie_m2,2234.5,calculado
 areas_comunes,EST_PROFESORES,conjunto,sur,calculado
@@ -540,7 +540,7 @@ areas_comunes,EST_POSGRADO,nombre,Estacionamiento Posgrado,capturado
 areas_comunes,EST_POSGRADO,tipo,estacionamiento,estimado
 areas_comunes,EST_POSGRADO,subtipo,estacionamiento,estimado
 areas_comunes,EST_POSGRADO,simular,True,estimado
-areas_comunes,EST_POSGRADO,capacidad_max,111,estimado
+areas_comunes,EST_POSGRADO,capacidad_max,69,estimado
 areas_comunes,EST_POSGRADO,unidad,vehiculos,capturado
 areas_comunes,EST_POSGRADO,superficie_m2,2764.1,calculado
 areas_comunes,EST_POSGRADO,conjunto,sur,calculado
@@ -592,7 +592,7 @@ areas_comunes,EST_INTERIOR_FI,nombre,Estacionamiento interior FI,capturado
 areas_comunes,EST_INTERIOR_FI,tipo,estacionamiento,estimado
 areas_comunes,EST_INTERIOR_FI,subtipo,estacionamiento,estimado
 areas_comunes,EST_INTERIOR_FI,simular,True,estimado
-areas_comunes,EST_INTERIOR_FI,capacidad_max,47,estimado
+areas_comunes,EST_INTERIOR_FI,capacidad_max,29,estimado
 areas_comunes,EST_INTERIOR_FI,unidad,vehiculos,capturado
 areas_comunes,EST_INTERIOR_FI,superficie_m2,1166.6,calculado
 areas_comunes,EST_INTERIOR_FI,conjunto,norte,calculado
@@ -605,7 +605,7 @@ areas_comunes,EST_MOTOS,nombre,Estacionamiento de Motos,capturado
 areas_comunes,EST_MOTOS,tipo,estacionamiento,estimado
 areas_comunes,EST_MOTOS,subtipo,motos,estimado
 areas_comunes,EST_MOTOS,simular,True,estimado
-areas_comunes,EST_MOTOS,capacidad_max,163,estimado
+areas_comunes,EST_MOTOS,capacidad_max,49,estimado
 areas_comunes,EST_MOTOS,unidad,vehiculos,capturado
 areas_comunes,EST_MOTOS,superficie_m2,488.8,calculado
 areas_comunes,EST_MOTOS,conjunto,norte,calculado
@@ -652,3 +652,7 @@ areas_comunes,AC_EXPLANADA_EDIFICIO_X,material_piso,concreto,estimado
 areas_comunes,AC_EXPLANADA_EDIFICIO_X,estado_fisico,regular,estimado
 areas_comunes,AC_EXPLANADA_EDIFICIO_X,descanso,secundaria,estimado
 areas_comunes,AC_EXPLANADA_EDIFICIO_X,wifi_ap,2,estimado
+recintos,AUDITORIO_SOTERO_P,capacidad_max,250,confirmado
+recintos,LAB_FOTO,capacidad_max,20,confirmado
+recintos,AUDITORIO_JAVIER_B,capacidad_max,420,confirmado
+recintos,LAB_SIG,capacidad_max,30,confirmado

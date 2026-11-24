@@ -54,23 +54,35 @@ const sumDia = (esc) => kpi.recintos.BIB.perfiles[esc].mie.ocupacion.reduce((a, 
 assert(sumDia('examenes') > sumDia('ordinario') * 1.15);
 ok('exámenes incrementan la demanda de Biblioteca');
 
-// 7. R3: alerta crítica cuando la predicción cruza 90 % (estacionamiento de profesores en la mañana)
+// 7. R3: alerta crítica en la Biblioteca en periodo de exámenes (las bibliotecas sí se saturan)
 let hallada = null;
-for (let m = 7 * 60; m < 12 * 60 && !hallada; m += 5) {
-  const p = Sim.prediccion('EST_PROFESORES_ANEXO_INGENIERIA', new Date(2026, 10, 26, 0, m), 'ordinario');
+for (let m = 8 * 60; m < 20 * 60 && !hallada; m += 5) {
+  const p = Sim.prediccion('BIB', new Date(2026, 10, 25, 0, m), 'examenes');
   if (p.reglas.some((r) => r.codigo === 'R3' && r.nivel === 'critico')) hallada = Sim.horaTxt(m);
 }
-assert(hallada, 'el estacionamiento de profesores debería disparar R3 en la mañana');
-ok(`R3: saturación crítica prevista en estacionamiento de profesores desde las ${hallada}`);
+assert(hallada, 'la Biblioteca debería disparar R3 en exámenes');
+ok(`R3: saturación crítica de la Biblioteca en exámenes desde las ${hallada}`);
 
-// 8. Caso del plan: Fotogrametría saturada el martes a las 10:00
+// 7b. Estacionamientos sin máximo: nunca alertan
+for (let m = 7 * 60; m < 21 * 60; m += 15) {
+  const v = Sim.ocupacionEnVivo('EST_PROFESORES_FI', new Date(2026, 10, 24, 0, m), 'ordinario');
+  assert(['bajo', 'moderado', 'cerrado'].includes(v.estado));
+}
+ok('estacionamientos sin alertas (solo demanda baja o alta)');
+
+// 8. Labs de Geomática: nunca se llenan (grupos de 4 a 12)
 const foto = Sim.ocupacionEnVivo('LAB_FOTO', new Date(2026, 10, 24, 10, 0), 'ordinario');
-assert(foto.saturacion >= 0.9, `Fotogrametría martes 10:00 = ${foto.saturacion}`);
-ok(`Fotogrametría el martes 10:00 al ${Math.round(foto.saturacion * 100)} %`);
+assert(foto.ocupacion >= 4 && foto.ocupacion <= 13 && foto.saturacion < 0.75, `Fotogrametría martes 10:00 = ${foto.ocupacion}`);
+ok(`Fotogrametría el martes 10:00: ${foto.ocupacion} personas (${Math.round(foto.saturacion * 100)} %), sin llenarse`);
 
-// 9. Alternativas del mismo grupo y no saturadas
-const alt = Sim.alternativas('LAB_FOTO', new Date(2026, 10, 24, 10, 0), 'ordinario');
-alt.forEach((a) => assert.strictEqual(Sim.grupo(a.id), 'computo'));
-ok(`alternativas a Fotogrametría (mar 10:00): ${alt.map((a) => a.id).join(', ') || 'ninguna libre'}`);
+// 9. Biblioteca llena: solo se sugieren otras bibliotecas con espacio
+const bib = Sim.ocupacionEnVivo('BIB', new Date(2026, 10, 24, 17, 0), 'ordinario');
+assert(['alto', 'critico'].includes(bib.estado), `Biblioteca 17:00 = ${bib.estado}`);
+const alt = Sim.alternativas('BIB', new Date(2026, 10, 24, 11, 0), 'ordinario');
+assert(alt.length > 0, 'a las 11:00 debe haber otra biblioteca con espacio');
+alt.forEach((a) => assert.strictEqual(Sim.grupo(a.id), 'biblioteca'));
+['AC_TREN', 'SALA_COMPUTO_1'].forEach((o) => Sim.alternativas(o, new Date(2026, 10, 24, 13, 0), 'ordinario')
+  .forEach((a) => assert.strictEqual(Sim.grupo(a.id), Sim.grupo(o))));
+ok(`Biblioteca 17:00 al ${Math.round(bib.saturacion * 100)} %; a las 11:00 sugiere: ${alt.map((a) => a.id).join(', ')} (mismo tipo)`);
 
 console.log(`\n${n} pruebas aprobadas`);
