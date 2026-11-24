@@ -3,6 +3,7 @@
 (function () {
   'use strict';
   const Sim = window.Simulacion;
+  const VERSION = '20261124-1630';   // igual que en index.html: obliga al navegador a usar archivos de la misma versión
 
   const COLOR = { bajo: '#2e9e5b', moderado: '#e9c13b', alto: '#ee8a2b', critico: '#d43d3d', cerrado: '#9aa3ad', sin: '#7c6aa6' };
   const COLOR_PRIORIDAD = { alta: '#d43d3d', media: '#ee8a2b', baja: '#2e9e5b' };
@@ -68,7 +69,7 @@
 
   // ------------------------------------------------------------------ carga
   async function cargar() {
-    const leer = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(url); return r.json(); });
+    const leer = (url) => fetch(`${url}?v=${VERSION}`).then((r) => { if (!r.ok) throw new Error(url); return r.json(); });
     try {
       const [ed, rc, ac, kpi] = await Promise.all([leer('data/edificios.geojson'), leer('data/recintos.geojson'),
         leer('data/areas_comunes.geojson'), leer('data/kpi_data.json')]);
@@ -520,15 +521,17 @@
     $('reloj-hora').textContent = Sim.horaTxt(t.getHours() * 60 + t.getMinutes());
     $('reloj-dia').textContent = `${cap(DIAS_LARGO[t.getDay()])} ${t.getDate()}/${t.getMonth() + 1}`;
     $('badge-demo').hidden = !st.demo;
-    pintarMapa();
-    pintarAhora(t);
-    pintarSugerencia(t);
-    pintarAviso(t);
-    if (st.tab === 'cuellos') pintarCuellos(t);
-    if (st.tab === 'generales') pintarGenerales(t);
-    if (st.tab === 'mantto') pintarMantto();
-    pulirTextos();
-    if (st.seleccion) (st.seleccion.startsWith('ed:') ? pintarEdificio(st.seleccion.slice(3), t) : pintarDetalle(st.seleccion, t));
+    // Cada parte se pinta por separado: si una falla, las demás (y la ficha) siguen funcionando
+    const paso = (f) => { try { f(); } catch (e) { console.error('GeoSIG:', e); } };
+    paso(pintarMapa);
+    paso(() => pintarAhora(t));
+    paso(() => pintarSugerencia(t));
+    paso(() => pintarAviso(t));
+    if (st.tab === 'cuellos') paso(() => pintarCuellos(t));
+    if (st.tab === 'generales') paso(() => pintarGenerales(t));
+    if (st.tab === 'mantto') paso(pintarMantto);
+    paso(pulirTextos);
+    if (st.seleccion) paso(() => (st.seleccion.startsWith('ed:') ? pintarEdificio(st.seleccion.slice(3), t) : pintarDetalle(st.seleccion, t)));
   }
 
   function programarMinuto() {
@@ -959,6 +962,7 @@
   }
   function seleccionar(id, sinZoom) {
     const p = st.prop[id];
+    if (!p) { if (st.propEd[id]) seleccionarEdificio(id, sinZoom); return; }
     if (st.piso !== 'todas' && !visible(id)) { st.piso = 'todas'; document.querySelectorAll('.piso').forEach((x) => x.classList.toggle('activo', x.dataset.piso === 'todas')); }
     st.seleccion = id;
     abrirDetalle();
