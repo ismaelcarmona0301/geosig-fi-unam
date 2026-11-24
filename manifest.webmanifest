@@ -1,0 +1,10 @@
+{
+  "name": "GeoSIG FI-UNAM · Ocupación de espacios",
+  "short_name": "GeoSIG FI",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#002b5c",
+  "theme_color": "#002b5c",
+  "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
