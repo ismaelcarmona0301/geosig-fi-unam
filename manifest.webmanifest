@@ -6,5 +6,5 @@
   "orientation": "any",
   "background_color": "#002b5c",
   "theme_color": "#002b5c",
-  "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [{ "src": "img/logo-emblema-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "img/logo-emblema-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" }]
 }

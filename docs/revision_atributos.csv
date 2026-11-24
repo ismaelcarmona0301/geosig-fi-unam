@@ -63,7 +63,7 @@ edificios,I,uso_principal,aulas,capturado
 edificios,I,superficie_m2,735.4,calculado
 edificios,I,estado_fisico,regular,estimado
 edificios,JCB,id_edificio,JCB,capturado
-edificios,JCB,nombre,Jefatura de CB,capturado
+edificios,JCB,nombre,Jefatura de la División de Ciencias Básicas,capturado
 edificios,JCB,niveles,1,capturado
 edificios,JCB,conjunto,sur,calculado
 edificios,JCB,uso_principal,administrativo,capturado
@@ -195,7 +195,7 @@ recintos,SALA_COMPUTO_2,hora_cierre,21:00,capturado
 recintos,SALA_COMPUTO_2,estado_fisico,bueno,estimado
 recintos,SALA_COMPUTO_2,wifi_ap,1,estimado
 recintos,AUDITORIO_SOTERO_P,id_recinto,AUDITORIO_SOTERO_P,capturado
-recintos,AUDITORIO_SOTERO_P,nombre,Auditorio Sotero P.,capturado
+recintos,AUDITORIO_SOTERO_P,nombre,Auditorio Sotero Prieto,capturado
 recintos,AUDITORIO_SOTERO_P,tipo,instalacion_general,estimado
 recintos,AUDITORIO_SOTERO_P,subtipo,auditorio,estimado
 recintos,AUDITORIO_SOTERO_P,id_edificio,M,capturado
@@ -234,7 +234,7 @@ recintos,SALA_COMPUTO_4,hora_cierre,21:00,capturado
 recintos,SALA_COMPUTO_4,estado_fisico,bueno,estimado
 recintos,SALA_COMPUTO_4,wifi_ap,1,estimado
 recintos,AUDITORIO_RAUL_J,id_recinto,AUDITORIO_RAUL_J,capturado
-recintos,AUDITORIO_RAUL_J,nombre,Auditorio Raúl J.,capturado
+recintos,AUDITORIO_RAUL_J,nombre,Auditorio Raúl J. Marsal,capturado
 recintos,AUDITORIO_RAUL_J,tipo,instalacion_general,estimado
 recintos,AUDITORIO_RAUL_J,subtipo,auditorio,estimado
 recintos,AUDITORIO_RAUL_J,id_edificio,U,capturado
@@ -260,7 +260,7 @@ recintos,SALA_COMPUTO_1,hora_cierre,21:00,capturado
 recintos,SALA_COMPUTO_1,estado_fisico,regular,estimado
 recintos,SALA_COMPUTO_1,wifi_ap,1,estimado
 recintos,AUDITORIO_JAVIER_B,id_recinto,AUDITORIO_JAVIER_B,capturado
-recintos,AUDITORIO_JAVIER_B,nombre,Auditorio Javier B.,capturado
+recintos,AUDITORIO_JAVIER_B,nombre,Auditorio Javier Barros Sierra,capturado
 recintos,AUDITORIO_JAVIER_B,tipo,instalacion_general,estimado
 recintos,AUDITORIO_JAVIER_B,subtipo,auditorio,estimado
 recintos,AUDITORIO_JAVIER_B,id_edificio,A,capturado
@@ -286,7 +286,7 @@ recintos,BIB,hora_cierre,21:00,capturado
 recintos,BIB,estado_fisico,regular,estimado
 recintos,BIB,wifi_ap,6,estimado
 recintos,AULA_MAGNA,id_recinto,AULA_MAGNA,capturado
-recintos,AULA_MAGNA,nombre,Aula magna,capturado
+recintos,AULA_MAGNA,nombre,Aula Magna,capturado
 recintos,AULA_MAGNA,tipo,instalacion_general,estimado
 recintos,AULA_MAGNA,subtipo,auditorio,estimado
 recintos,AULA_MAGNA,id_edificio,D,capturado
@@ -313,7 +313,7 @@ recintos,SALA_COMPUTO_3,estado_fisico,regular,estimado
 recintos,SALA_COMPUTO_3,wifi_ap,1,estimado
 recintos,LABORATORIOS,hora_cierre (capturada),09:00,"corregido a 21:00, confirmar"
 recintos,LABORATORIOS,id_recinto,LABORATORIOS,capturado
-recintos,LABORATORIOS,nombre,Laboratorios,capturado
+recintos,LABORATORIOS,nombre,Laboratorio de Cómputo Geomático,capturado
 recintos,LABORATORIOS,tipo,laboratorio,estimado
 recintos,LABORATORIOS,subtipo,laboratorio,estimado
 recintos,LABORATORIOS,id_edificio,R,capturado

@@ -131,18 +131,18 @@
     }
     const reglas = [];
     reglas.push(esc === 'examenes'
-      ? { codigo: 'R2', nivel: 'info', texto: 'Periodo de exámenes: se usa el perfil de alta demanda.' }
-      : { codigo: 'R1', nivel: 'info', texto: 'Demanda ordinaria: se usa el perfil típico del día.' });
+      ? { codigo: 'R2', nivel: 'info', texto: 'Periodo de exámenes: se espera más demanda de lo normal.' }
+      : { codigo: 'R1', nivel: 'info', texto: 'Demanda ordinaria.' });
     const dens = !!r.umbrales_densidad;
     const val = (p) => (dens ? `${(p.ocupacion / r.superficie_m2).toFixed(2)} personas/m²` : `${Math.round(p.saturacion * 100)} %`);
     if (ahora.abierto && ahora.estado === 'critico') {
-      reglas.push({ codigo: 'R3', nivel: 'critico', texto: `${dens ? 'Congestión' : 'Saturación crítica'} ahora (${val(ahora)}).` });
+      reglas.push({ codigo: 'R3', nivel: 'critico', texto: `${dens ? 'Congestionado' : 'Lleno'} ahora (${val(ahora)}).` });
     } else {
       const crit = puntos.find((p) => p.estado === 'critico');
-      if (crit) reglas.push({ codigo: 'R3', nivel: 'critico', texto: `Se prevé ${dens ? 'congestión' : 'saturación crítica'} a las ${crit.hora} (${val(crit)}).` });
+      if (crit) reglas.push({ codigo: 'R3', nivel: 'critico', texto: `${dens ? 'Se congestionará' : 'Se llenará'} hacia las ${crit.hora} (${val(crit)}).` });
       else {
         const alto = puntos.find((p) => p.estado === 'alto');
-        if (alto) reglas.push({ codigo: 'R3', nivel: 'alto', texto: `${dens ? 'Zona concurrida' : 'Ocupación alta'} prevista a las ${alto.hora} (${val(alto)}).` });
+        if (alto) reglas.push({ codigo: 'R3', nivel: 'alto', texto: `${dens ? 'Estará concurrido' : 'Estará casi lleno'} hacia las ${alto.hora} (${val(alto)}).` });
       }
     }
     return { ahora, puntos, reglas, escenario: esc };

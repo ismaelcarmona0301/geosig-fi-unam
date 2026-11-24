@@ -74,7 +74,7 @@ Las capacidades confirmadas en la hoja "Espacios y capacidades" se copian a `dat
 - **Biblioteca:** visitas = flujo acumulado; préstamos = 0.18 por visita.
 - **Áreas de descanso:** todas las áreas comunes y verdes excepto estacionamientos, zona restringida, entrada del Anexo, Instituto de Ingeniería y Área de Posgrado; principales: Zona del tren, Jardineras FI y Plaza del Bicentenario.
 - **Histórico:** 12 semanas sintéticas del semestre 2027-1 (tendencia creciente y repunte en parciales).
-- **Índice de prioridad (P3):** 50 % densidad de uso y 50 % horas en ≥ 75 % (solo datos de ocupación; el estado físico ya no interviene). Se calcula por zona y por edificio; personas y vehículos por separado.
+- **Índice de atención (P3):** a partes iguales, personas al día (volumen), uso por m² (intensidad) y horas en ≥ 75 % (saturación), normalizados dentro de su grupo; alta ≥ 0.44, media ≥ 0.28. Se calcula por zona y por edificio; personas y vehículos por separado.
 
 ## Datos oficiales de la Red PC-PUMA
 

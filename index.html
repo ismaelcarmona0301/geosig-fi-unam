@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#002b5c">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icono.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icono.svg">
+  <link rel="icon" href="img/logo-emblema-96.png" type="image/png">
+  <link rel="apple-touch-icon" href="img/logo-emblema-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="GeoSIG FI">
@@ -25,17 +25,14 @@
 <body>
   <header class="barra">
     <div class="marca">
-      <svg class="logo-svg" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="9" fill="#0b3f7a"/>
-        <path d="M8 28 L16 22 L24 26 L32 18" stroke="#e8eef7" stroke-width="1.6" fill="none" opacity=".5"/>
-        <path d="M20 8c-5 0-9 3.9-9 8.8C11 23 20 32 20 32s9-9 9-15.2C29 11.9 25 8 20 8z" fill="#c99a2e"/>
-        <circle cx="20" cy="16.8" r="3.4" fill="#002b5c"/></svg>
-      <span class="logo">Geo<b>SIG</b></span>
+      <img class="logo-img" src="img/logo-emblema-96.png" alt="Logotipo de GeoSIG" width="46" height="46">
+      <span class="logo">GeoSIG</span>
       <span class="sub">FI-UNAM · Ocupación de espacios</span>
     </div>
     <div class="reloj" aria-live="polite">
       <span id="reloj-hora">--:--</span>
       <span id="reloj-dia"></span>
-      <span id="badge-demo" class="badge-demo" hidden>SIMULANDO HORA</span>
+      <span id="badge-demo" class="badge-demo" hidden>Hora elegida</span>
     </div>
     <div class="controles">
       <label class="sr-only" for="sel-escenario">Escenario</label>
@@ -44,9 +41,9 @@
         <option value="ordinario">Demanda ordinaria</option>
         <option value="examenes">Periodo de exámenes</option>
       </select>
-      <button id="btn-demo" class="ctl ctl-oro" aria-expanded="false">Simular hora</button>
-      <button id="btn-guia" class="ctl">▶ Guía</button>
-      <button id="btn-resumen" class="ctl">Resumen</button>
+      <button id="btn-demo" class="ctl ctl-oro" aria-expanded="false">Elegir hora</button>
+      <button id="btn-guia" class="ctl">▶ Recorrido</button>
+      <button id="btn-resumen" class="ctl">Guía de uso</button>
       <button id="btn-pantalla" class="ctl ctl-icono" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
     </div>
   </header>
@@ -57,10 +54,10 @@
       <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
       <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option>
     </select>
-    <input id="demo-hora" type="range" min="420" max="1200" step="5" value="720" aria-label="Hora simulada">
+    <input id="demo-hora" type="range" min="420" max="1200" step="5" value="720" aria-label="Hora">
     <output id="demo-hora-txt">12:00</output>
     <button id="demo-play" class="ctl" aria-label="Reproducir el día">▶ Reproducir</button>
-    <button id="demo-salir" class="ctl ctl-oro">Tiempo real</button>
+    <button id="demo-salir" class="ctl ctl-oro">Volver a la hora actual</button>
   </div>
 
   <main class="layout">
@@ -82,8 +79,8 @@
       <div id="leyenda" class="leyenda"></div>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="aviso" class="aviso" role="alertdialog" aria-live="assertive" hidden></div>
-      <div id="guia" class="guia" hidden role="dialog" aria-label="Demostración guiada">
-        <div class="guia-cab"><span id="guia-paso">1 / 9</span><button id="guia-salir" class="btn-x" aria-label="Salir de la guía">✕</button></div>
+      <div id="guia" class="guia" hidden role="dialog" aria-label="Recorrido">
+        <div class="guia-cab"><span id="guia-paso">1 / 9</span><button id="guia-salir" class="btn-x" aria-label="Salir del recorrido">✕</button></div>
         <h3 id="guia-tit"></h3>
         <p id="guia-txt"></p>
         <div class="guia-pie">
@@ -102,16 +99,12 @@
       </nav>
 
       <div class="tab-body" id="tab-ahora">
-        <div class="kpis">
-          <div class="kpi"><span class="kpi-v" id="kpi-recintos">–</span><span class="kpi-l">personas en edificios</span></div>
-          <div class="kpi"><span class="kpi-v" id="kpi-areas">–</span><span class="kpi-l">personas en áreas comunes</span></div>
-          <div class="kpi"><span class="kpi-v" id="kpi-cajones">–</span><span class="kpi-l">vehículos estacionados</span></div>
-          <div class="kpi"><span class="kpi-v" id="kpi-alertas">–</span><span class="kpi-l">zonas en alto o crítico</span></div>
-        </div>
-        <p class="escenario-linea">Escenario activo: <b id="kpi-escenario">–</b></p>
+        <h3 class="h-sec h-primera">Indicadores clave</h3>
+        <div class="kpis kpis-clave" id="kpis-clave"></div>
+        <p class="escenario-linea" id="resumen-linea"></p>
         <div id="sugerencia" class="sugerencia" hidden></div>
         <div id="lista-alertas"></div>
-        <h3 class="h-sec">Zonas <small>toca una para ver su ficha y pronóstico</small></h3>
+        <h3 class="h-sec">Zonas <small>Toca una para ver su ficha</small></h3>
         <div class="filtros" role="group" aria-label="Filtrar zonas">
           <button class="filtro activo" data-filtro="todo">Todo</button>
           <button class="filtro" data-filtro="edificios">Edificios</button>
@@ -126,50 +119,53 @@
         <p class="pregunta">¿Dónde están los cuellos de botella de uso?</p>
         <p class="ctx-dia" id="ctx-cuellos"></p>
         <p id="txt-cuellos" class="conclusion"></p>
-        <h3 class="h-sec">Mapa de calor de hoy <small id="cap-calor"></small></h3>
+        <h3 class="h-sec">Predicciones de la semana <small>Según el comportamiento de cada día</small></h3>
+        <div id="lista-predicciones" class="predicciones"></div>
+        <h3 class="h-sec">Mapa de calor de hoy</h3>
+        <p class="leyenda-sec" id="cap-calor"></p>
         <div class="calor-wrap"><table id="tabla-calor" class="calor"></table></div>
-        <h3 class="h-sec">Horas en saturación hoy, recintos <small>ya ocurridas y previstas</small></h3>
+        <h3 class="h-sec">Horas por encima del 75 % <small>Recintos, hoy</small></h3>
         <div class="graf"><canvas id="g-cuellos"></canvas></div>
-        <h3 class="h-sec">Histórico del semestre <small>saturación media semanal</small></h3>
+        <h3 class="h-sec">Tendencia del semestre <small>Ocupación media semanal</small></h3>
         <p id="txt-tendencia" class="nota-dato"></p>
         <div class="graf graf-chica"><canvas id="g-tendencia"></canvas></div>
-        <p class="nota">Histórico sintético del semestre 2027-1 (semanas desde el 31 de agosto).</p>
       </div>
 
       <div class="tab-body" id="tab-generales" hidden>
         <p class="pregunta">¿Cómo se distribuye el uso de las instalaciones generales?</p>
         <p class="ctx-dia" id="ctx-generales"></p>
         <p id="txt-generales" class="conclusion"></p>
-        <h3 class="h-sec">Ocupación de hoy <small id="cap-generales"></small></h3>
+        <h3 class="h-sec">Ocupación de hoy</h3>
+        <p class="leyenda-sec" id="cap-generales"></p>
         <div class="graf"><canvas id="g-generales-linea"></canvas></div>
-        <h3 class="h-sec">Reparto del uso por tipo de espacio <small>personas·hora de hoy</small></h3>
+        <h3 class="h-sec">Reparto del uso por tipo de espacio <small>Hoy</small></h3>
         <div class="graf graf-dona"><canvas id="g-generales-dona"></canvas></div>
-        <h3 class="h-sec">Áreas de descanso <small>principales primero</small></h3>
+        <h3 class="h-sec">Áreas de descanso <small>Principales primero</small></h3>
         <div class="calor-wrap"><table id="tabla-descanso" class="tabla"></table></div>
-        <h3 class="h-sec">Red PC-PUMA: uso real por hora <small>videos oficiales FI vs. modelo</small></h3>
+        <h3 class="h-sec">Red inalámbrica PC-PUMA</h3>
         <p id="txt-red" class="nota-dato"></p>
         <div id="red-stats" class="kpis"></div>
-        <h3 class="h-sec">Tráfico por servicio <small>infografía oficial</small></h3>
-        <div class="graf graf-chica"><canvas id="g-red-apps"></canvas></div>
+        <h3 class="h-sec">Uso de la red por hora <small>Conjuntos Norte y Sur</small></h3>
         <div class="graf"><canvas id="g-red-conj"></canvas></div>
-        <p class="nota">Fuente: “Un día en la Facultad de Ingeniería”, Red PC-PUMA (Transformación Digital FI-UNAM). Índice relativo extraído del mapa de calor; no es un conteo exacto.</p>
-        <h3 class="h-sec">Conectividad Wi-Fi <small>pico de hoy</small></h3>
+        <h3 class="h-sec">Tráfico por servicio</h3>
+        <div class="graf graf-chica"><canvas id="g-red-apps"></canvas></div>
+        <p class="nota">Fuente: Red PC-PUMA, Facultad de Ingeniería.</p>
+        <h3 class="h-sec">Conectividad Wi-Fi <small>Uso máximo de hoy</small></h3>
         <p id="txt-wifi" class="nota-dato"></p>
         <div class="graf"><canvas id="g-wifi"></canvas></div>
-        <p class="nota">Interiores: puntos de acceso oficiales de cada edificio (Red PC-PUMA) repartidos por superficie. Exteriores: estimados por superficie. 40 dispositivos por punto de acceso.</p>
-        <h3 class="h-sec">Tráfico peatonal <small>personas que pasan por hora</small></h3>
+        <h3 class="h-sec">Tráfico peatonal <small>Personas que pasan por hora</small></h3>
         <div class="calor-wrap"><table id="tabla-trafico" class="tabla"></table></div>
-        <h3 class="h-sec">Estacionamientos <small>hoy</small></h3>
+        <h3 class="h-sec">Estacionamientos <small>Hoy</small></h3>
         <div class="calor-wrap"><table id="tabla-estac" class="tabla"></table></div>
       </div>
 
       <div class="tab-body" id="tab-mantto" hidden>
-        <p class="pregunta">¿Qué zonas requieren atención (mantenimiento o más recursos) por su intensidad de uso?</p>
+        <p class="pregunta">¿Qué zonas requieren atención (mantenimiento o más recursos)?</p>
         <p class="ctx-dia" id="ctx-mantto"></p>
         <p id="txt-mantto" class="conclusion"></p>
-        <h3 class="h-sec">Edificios <small>índice de atención del edificio completo</small></h3>
+        <h3 class="h-sec">Edificios <small>Índice de atención</small></h3>
         <div class="graf graf-alta"><canvas id="g-mantto"></canvas></div>
-        <h3 class="h-sec">Evidencia oficial: intensidad de uso de la red <small>por edificio</small></h3>
+        <h3 class="h-sec">Uso de la red por edificio <small>Hora pico</small></h3>
         <p id="txt-red-ed" class="nota-dato"></p>
         <div class="graf"><canvas id="g-red-ed"></canvas></div>
         <h3 class="h-sec">Zonas</h3>
@@ -185,27 +181,24 @@
         <div id="det-cuerpo"></div>
         <div id="det-reglas"></div>
         <div id="det-alternativas"></div>
-        <div id="det-red" hidden><h3 class="h-sec">Uso de la red PC-PUMA por hora <small>oficial</small></h3><div class="graf graf-chica"><canvas id="g-red"></canvas></div></div>
-        <div id="det-hist"><h3 class="h-sec">Histórico del semestre</h3><div class="graf graf-chica"><canvas id="g-historico"></canvas></div></div>
+        <div id="det-red" hidden><h3 class="h-sec">Uso de la red Wi-Fi por hora</h3><div class="graf graf-chica"><canvas id="g-red"></canvas></div></div>
+        <div id="det-hist"><h3 class="h-sec">Tendencia del semestre</h3><div class="graf graf-chica"><canvas id="g-historico"></canvas></div></div>
         <button id="det-edificio" class="ctl ancho" hidden>Ver edificio completo</button>
-        <p class="nota"><span class="est">est.</span> = dato estimado por el equipo, pendiente de confirmar.</p>
       </div>
     </aside>
   </main>
 
   <div id="resumen" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="res-tit">
     <div class="modal-caja">
-      <div class="modal-cab"><h2 id="res-tit">Resumen ejecutivo</h2><button id="res-cerrar" class="btn-x" aria-label="Cerrar">✕</button></div>
+      <div class="modal-cab"><div class="modal-marca"><img src="img/logo-emblema-96.png" alt="" width="44" height="44"><h2 id="res-tit">Guía de uso</h2></div><button id="res-cerrar" class="btn-x" aria-label="Cerrar">✕</button></div>
       <p id="res-sub" class="nota"></p>
       <div id="res-kpis" class="kpis"></div>
       <div id="res-cuerpo"></div>
-      <p class="nota">Datos de ocupación sintéticos; antenas, curva de uso y estadísticas de red: Red PC-PUMA (FI-UNAM). Promedios de lunes a viernes.</p>
     </div>
   </div>
 
   <footer class="pie">
-    Datos sintéticos con fines académicos · Actualización cada minuto <span id="prox-act"></span> ·
-    Administración de Proyectos, FI-UNAM 2027-1
+    GeoSIG · Facultad de Ingeniería, UNAM · Se actualiza cada minuto <span id="prox-act"></span>
   </footer>
 </body>
 </html>

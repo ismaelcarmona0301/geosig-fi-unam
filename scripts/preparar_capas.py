@@ -42,10 +42,10 @@ M2_POR_AP = {"plaza": 1500, "pasillo": 1500, "acceso": 600, "descanso": 700, "ca
 # Acentos que QGIS suele perder al capturar
 # Uso de cada edificio según el croquis oficial de la FI (www.ingenieria.unam.mx/pdf/croquis.pdf)
 USO_OFICIAL = {
-    "A": ("mixto", "Edificio de la Dirección; Auditorio Javier Barros Sierra y Biblioteca Antonio Dovalí Jaime"),
+    "A": ("mixto", "Edificio de la Dirección; Secretarías General y Administrativa; División de Ciencias Sociales y Humanidades; División de Ingeniería en Ciencias de la Tierra; Auditorio Javier Barros Sierra y Biblioteca Antonio Dovalí Jaime"),
     "B": ("aulas", "Edificio de salones"),
     "C": ("aulas", "Edificio de salones; laboratorios de Ingeniería Industrial y Ciencias de la Tierra"),
-    "D": ("aulas", "Edificio de salones; laboratorios de Ingeniería Eléctrica y Civil; Aula Magna"),
+    "D": ("aulas", "Edificio de salones; laboratorios de Ingeniería Eléctrica y de Ingeniería Civil; Servicios Audiovisuales; Aula Magna"),
     "E": ("administrativo", "UNICA / USECAD; EDUCAFI, Movilidad Estudiantil, Comunicación"),
     "F": ("laboratorios", "Laboratorios de Ingeniería de Minas y Metalurgia"),
     "G": ("laboratorios", "Laboratorios de la División de Ciencias Básicas"),
@@ -68,6 +68,16 @@ USO_OFICIAL = {
     "X": ("laboratorios", "Centro de Ingeniería Avanzada"),
     "Y": ("aulas", "Continuación ala poniente; nuevos salones"),
     "JCB": ("administrativo", "Jefatura de la División de Ciencias Básicas"),
+}
+
+# Nombres completos según el croquis oficial de la FI y lo confirmado por el equipo (los id no cambian)
+NOMBRES_OFICIALES = {
+    "Laboratorios": "Laboratorio de Cómputo Geomático",
+    "Auditorio Javier B.": "Auditorio Javier Barros Sierra",
+    "Auditorio Sotero P.": "Auditorio Sotero Prieto",
+    "Auditorio Raúl J.": "Auditorio Raúl J. Marsal",
+    "Aula magna": "Aula Magna",
+    "Jefatura de CB": "Jefatura de la División de Ciencias Básicas",
 }
 
 ACENTOS = {"Biblioteca Antonio D": "Biblioteca Antonio Dovalí Jaime", "computo": "cómputo", "Computo": "Cómputo", "Fotogrametria": "Fotogrametría", "fotogrametria": "fotogrametría",
@@ -230,7 +240,7 @@ def preparar_edificios():
         if uso == "biblioteca" and re.match(r"^Edificio\s+\w+$", nombre) and descripcion:
             nombre = f"{descripcion} (Edificio {id_ed})"
         props = {
-            "id_edificio": id_ed, "nombre": nombre, "niveles": int(float(niveles)),
+            "id_edificio": id_ed, "nombre": NOMBRES_OFICIALES.get(nombre, nombre), "niveles": int(float(niveles)),
             "conjunto": obtener(pr, "conjunto") or conjunto_de(f["geometry"]),
             "uso_principal": uso, "descripcion": descripcion, "division": obtener(pr, "division"),
             "superficie_m2": round(gu.area_m2(f["geometry"]), 1), "estado_fisico": estado,
@@ -321,7 +331,7 @@ def preparar_recintos(edificios, ids):
             nivel = 0
             est.append("nivel")
         props = {
-            "id_recinto": rid, "nombre": nombre, "tipo": tipo, "subtipo": subtipo, "id_edificio": id_ed,
+            "id_recinto": rid, "nombre": NOMBRES_OFICIALES.get(nombre, nombre), "tipo": tipo, "subtipo": subtipo, "id_edificio": id_ed,
             "nivel": int(float(nivel)), "capacidad_max": int(cap), "unidad": "personas", "superficie_m2": sup,
             "equipos": equipos, "hora_apertura": h_ap, "hora_cierre": h_ci, "responsable": obtener(pr, "responsable"),
             "estado_fisico": estado, "ultima_revision": obtener(pr, "ultima_revision"), "accesible": obtener(pr, "accesible"),

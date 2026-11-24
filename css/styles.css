@@ -1,5 +1,6 @@
 /* GeoSIG FI-UNAM · Identidad azul y oro · mobile-first, optimizado para tableta */
 :root {
+  color-scheme: light;
   --azul: #002b5c;
   --azul-2: #0b3f7a;
   --azul-claro: #e8eef7;
@@ -34,7 +35,7 @@ button, select, input { font: inherit; }
   background: var(--azul); color: #fff; border-bottom: 4px solid var(--oro);
 }
 .marca { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: center; line-height: 1.1; margin-right: auto; }
-.logo-svg { width: 42px; height: 42px; grid-row: span 2; }
+.logo-img { width: 46px; height: 46px; grid-row: span 2; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(201,154,46,.6); }
 .logo { font-size: 1.5rem; font-weight: 800; letter-spacing: .5px; }
 .logo b { color: var(--oro); }
 .sub { font-size: .8rem; opacity: .85; }
@@ -157,7 +158,7 @@ button, select, input { font: inherit; }
 .fila .meta { font-size: .78rem; color: var(--gris); }
 .barra-ocup { grid-column: 1 / -1; height: 10px; background: #edf0f5; border-radius: 99px; overflow: hidden; }
 .barra-ocup span { display: block; height: 100%; border-radius: 99px; transition: width .6s ease; }
-.chip { font-size: .75rem; font-weight: 800; padding: 4px 10px; border-radius: 99px; color: #fff; text-transform: uppercase; letter-spacing: .3px; }
+.chip { font-size: .75rem; font-weight: 800; padding: 4px 10px; border-radius: 99px; color: #fff; letter-spacing: .2px; white-space: nowrap; }
 .chip.bajo { background: var(--bajo); } .chip.moderado { background: var(--moderado); color: #3d3000; }
 .chip.alto { background: var(--alto); } .chip.critico { background: var(--critico); } .chip.cerrado { background: var(--cerrado); }
 .chip.p-alta { background: var(--critico); } .chip.p-media { background: var(--alto); } .chip.p-baja { background: var(--bajo); }
@@ -353,3 +354,45 @@ button, select, input { font: inherit; }
 .ctx-dia { margin: -4px 0 10px; padding: 6px 10px; border-radius: 8px; background: var(--azul-claro, #e8eef7); color: var(--azul); font-size: .78rem; font-weight: 600; }
 .calor td.pasado { opacity: .45; }
 .calor th.ahora { color: var(--azul); font-weight: 900; }
+
+.leyenda-sec { margin: -4px 0 8px; font-size: .78rem; color: var(--gris); }
+.conclusion b { color: var(--azul); }
+
+/* Guía de uso */
+.guia-intro { font-size: 1rem; line-height: 1.55; margin: 12px 0 4px; }
+.guia-sec { margin-top: 18px; }
+.guia-sec h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--azul); font-size: 1.05rem; }
+.guia-ico { font-size: 1.15rem; }
+.guia-lista { margin: 0; padding-left: 20px; line-height: 1.55; }
+.guia-lista li { margin-bottom: 6px; }
+.guia-color { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 2px; }
+.guia-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.guia-tabs > div { background: #f6f8fb; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; }
+.guia-tabs p { margin: 4px 0 8px; font-size: .9rem; line-height: 1.45; flex: 1; }
+.ctl-chico { min-height: 34px; padding: 4px 12px; font-size: .85rem; align-self: flex-start; }
+
+/* Indicadores clave (los del alcance del proyecto) */
+.h-sec.h-primera { margin-top: 2px; }
+.kpis-clave { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.kpi-btn { border: 0; text-align: left; cursor: pointer; font: inherit; gap: 2px; min-height: 92px; }
+.kpi-btn:hover { box-shadow: inset 0 0 0 2px var(--azul-2, #3a7bd5); }
+.kpi-t { font-size: .74rem; font-weight: 800; color: var(--azul); text-transform: none; }
+.kpi-btn .kpi-v { font-size: 1.5rem; line-height: 1.15; }
+.kpi-btn.destacado { background: var(--oro-claro); box-shadow: inset 0 0 0 2px var(--oro); }
+.kpi-btn.destacado .kpi-v { color: #7a5a10; }
+.escenario-linea { font-size: .82rem; color: var(--gris); margin: 8px 0 4px; }
+/* Predicciones */
+.predicciones { display: grid; gap: 6px; }
+.pred { display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%; border: 1px solid #e1e6ee; background: #fff; border-radius: 10px; padding: 9px 11px; font: inherit; cursor: pointer; line-height: 1.4; }
+.pred-ico { flex: 0 0 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .8rem; }
+.pron-tend { margin: 10px 0 0; padding: 8px 10px; background: #f1f4f9; border-radius: 8px; font-size: .86rem; line-height: 1.4; }
+.modal-marca { display: flex; align-items: center; gap: 10px; }
+.etq-clave { font-weight: 900; }
+
+.pron-chip.destacado { background: var(--oro-claro); box-shadow: inset 0 0 0 2px var(--oro); }
+.pron-chip.destacado b { color: #7a5a10; }
+.ley-estrella { color: var(--oro); font-weight: 900; margin-right: 6px; }
+
+/* Botones con texto: color explícito (si el navegador usa tema oscuro, el texto de los botones se volvía blanco) */
+.pred, .aviso-alt, .kpi-btn, .fila, .pron-chip { color: var(--tinta, #1f2937); }
+.pred b, .aviso-alt b { color: var(--azul); }

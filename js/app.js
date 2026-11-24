@@ -38,7 +38,20 @@
   const estadoTxt = (id, e) => (esPark(id) ? ETQ_PARK[e] || e : esDens(id) ? ETQ_LOS[e] : ETQ_ESTADO[e]);
   const unidadTxt = (u, n) => (u === 'vehiculos' ? (n === 1 ? 'vehículo' : 'vehículos') : (n === 1 ? 'persona' : 'personas'));
   const nivelTxt = (n) => (n === 0 ? 'Planta baja' : `Nivel ${n}`);
-  const est = (p, campo) => ((p.campos_estimados || []).includes(campo) ? ' <span class="est" title="Dato estimado, por confirmar">est.</span>' : '');
+  const est = () => '';
+  const cap = (t) => (t ? String(t).charAt(0).toUpperCase() + String(t).slice(1) : t);
+  /** "7.8 horas", "1 hora", "45 minutos" */
+  const horasTxt = (h) => (h < 0.05 ? '0 horas' : h < 1 ? `${Math.round(h * 60)} minutos` : Math.abs(h - 1) < 0.05 ? '1 hora' : `${(Math.round(h * 10) / 10).toLocaleString('es-MX')} horas`);
+  /** Artículo para un nombre de espacio: "el Edificio D", "la Biblioteca…", "los Pasillos centrales". */
+  const articulo = (n) => (/^(Pasillos|Jardines|Laboratorios)\b/.test(n) ? 'los' : /^(Jardineras|Canchas)\b/.test(n) ? 'las'
+    : /^(Edificio|Auditorio|Pasillo|Laboratorio|Aula|Estacionamiento|Área)\b/.test(n) ? 'el' : /^(Biblioteca|Sala|Entrada|Plaza|Zona|Explanada|Parte|Jefatura|Jardinera)\b/.test(n) ? 'la' : '');
+  const conArt = (n) => (articulo(n) ? `${articulo(n)} ${n}` : n);
+  /** Nombre en negritas con su artículo fuera: "la <b>Biblioteca…</b>" */
+  const bArt = (n) => (articulo(n) ? `${articulo(n)} <b>${esc(n)}</b>` : `<b>${esc(n)}</b>`);
+  /** Une nombres: "A", "A y B", "A, B y C" */
+  const lista = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs[xs.length - 1]}`);
+  /** Evita “..”: corta el punto final duplicado en textos que terminan en abreviatura (p. ej. “Auditorio Raúl J.”). */
+  const limpiar = (html) => html.replace(/\.(<\/b>)?\./g, '.$1');
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // ------------------------------------------------------------------ tiempo
@@ -105,7 +118,7 @@
     base.on('tileload', () => { cargadas++; document.body.classList.remove('sin-basemap'); });
     base.on('tileerror', () => {
       fallidas++;
-      if (fallidas === 4 && cargadas === 0) { document.body.classList.add('sin-basemap'); toast('Sin conexión: el mapa base no está disponible; las capas sí.', 5000); }
+      if (fallidas === 4 && cargadas === 0) { document.body.classList.add('sin-basemap'); toast('Sin conexión: el mapa de fondo no está disponible.', 5000); }
     });
 
     grupoEd = L.geoJSON(st.edificios, {
@@ -149,7 +162,7 @@
         const c = st.centroides[id];
         st.marcaPark = st.marcaPark || {};
         grupoTramas.addLayer(st.marcaPark[id] = L.marker(c, { pane: 'pRecintos', interactive: false, keyboard: false,
-          icon: L.divIcon({ className: '', html: `<span class="ico-park">${st.prop[id].subtipo === 'motos' ? 'P<small>moto</small>' : 'P'}</span>`, iconSize: [26, 26], iconAnchor: [13, 34] }) }));
+          icon: L.divIcon({ className: '', html: `<span class="ico-park">${st.prop[id].subtipo === 'motos' ? 'P<small>Motos</small>' : 'P'}</span>`, iconSize: [26, 26], iconAnchor: [13, 34] }) }));
       }
     });
 
@@ -266,8 +279,8 @@
       if (simulada(id)) {
         const v = st.vivo[id];
         let txt = valorTxt(id, v);
-        if (st.capa === 'wifi') { const w = Sim.wifi(id, v.ocupacion); txt = !w.aplica ? '' : !w.cobertura ? 'sin señal' : (v.abierto ? pct(w.saturacion) : '—'); }
-        capa.setTooltipContent(txt);
+        if (st.capa === 'wifi') { const w = Sim.wifi(id, v.ocupacion); txt = !w.aplica ? '' : !w.cobertura ? 'Sin señal' : (v.abierto ? pct(w.saturacion) : '—'); }
+        capa.setTooltipContent(esClave(id) && txt ? `★ ${txt}` : txt);
       }
     });
     const ley = $('leyenda');
@@ -283,7 +296,8 @@
       `<div>${MUESTRA('estancia', '#fff')}Plaza o descanso</div>` +
       `<div>${MUESTRA('verde', '#fff')}Jardín</div>` +
       `<div><span class="ico-park mini">P</span>Estacionamiento</div>` +
-      `<div>${MUESTRA(null, '#fff', '#9aa3ad', 1, '3 2')}Sin simular</div>`;
+      `<div>${MUESTRA(null, '#fff', '#9aa3ad', 1, '3 2')}Sin monitoreo</div>` +
+      '<div><span class="ley-estrella">★</span>Salas PC-PUMA, bibliotecas y laboratorios de Geomática</div>';
     const u = st.kpi.meta.umbrales, P = (x) => Math.round(x * 100);
     const escala = ['bajo', 'moderado', 'alto', 'critico'].map((e, k) =>
       `<div><i style="background:${COLOR[e]}"></i>${[`&lt; ${P(u.moderado)} %`, `${P(u.moderado)}–${P(u.alto)} %`, `${P(u.alto)}–${P(u.critico)} %`, `≥ ${P(u.critico)} %`][k]}</div>`).join('');
@@ -423,7 +437,7 @@
       (sg.saturada
         ? `<p>${sg.motivo ? esc(sg.motivo) : 'Esta zona está muy ocupada.'} ${sg.alts.length ? 'Te sugerimos:' : 'No hay alternativas cercanas con espacio en este momento.'}</p>` +
           sg.alts.map((a) => `<button class="fila" ${a.esEdificio ? `data-ed="${a.id}"` : `data-ir="${a.id}"`}><span><span class="nom">${esc(a.nombre)}</span><br>
-            <span class="meta">${valorTxt(a.id, a.ahora)} ahora${a.dist ? ` · a ${Math.round(a.dist)} m` : ''}</span></span><span class="chip ${a.ahora.estado}">Ir</span></button>`).join('')
+            <span class="meta">${valorTxt(a.id, a.ahora)} ahora${a.dist ? ` · A ${Math.round(a.dist)} m` : ''}</span></span><span class="chip ${a.ahora.estado}">Ir</span></button>`).join('')
         : '<p>Hay espacio aquí: no necesitas moverte.</p>');
   }
 
@@ -448,7 +462,7 @@
     caja.innerHTML = `<button class="aviso-x" aria-label="Cerrar aviso">✕</button>
       <div class="aviso-cab" data-clave="${clave}"><span class="aviso-ico">!</span><span><b>${esc(nom)}</b> está ${sg.v.estado === 'critico' ? 'lleno' : 'casi lleno'} <span class="chip ${sg.v.estado}">${val}</span></span></div>` +
       (a0 ? `<p class="aviso-txt">Te sugerimos ir a:</p>` + sg.alts.map((a, k) => `<button class="aviso-alt${k === 0 ? ' prim' : ''}" ${a.esEdificio ? `data-ed="${a.id}"` : `data-ir="${a.id}"`}>
-          <span><b>${esc(a.nombre)}</b><br><small>${a.dist ? `a ${Math.round(a.dist)} m · ~${Math.max(1, Math.round(a.dist / 75))} min caminando · ` : ''}${valorTxt(a.id, a.ahora)} ahora</small></span>
+          <span><b>${esc(a.nombre)}</b><br><small>${a.dist ? `A ${Math.round(a.dist)} m, unos ${Math.max(1, Math.round(a.dist / 75))} min caminando · ` : ''}${valorTxt(a.id, a.ahora)} ahora</small></span>
           <span class="chip ${a.ahora.estado}">Ir</span></button>`).join('')
         : `<p class="aviso-txt">No hay ${TIPO_SUG[Sim.grupo(sg.z.id)] || 'lugares del mismo tipo'} con espacio en este momento.</p>`);
     caja.querySelector('.aviso-x').onclick = () => { st.avisoCerrado = clave; caja.hidden = true; };
@@ -462,7 +476,7 @@
     if (lineaRuta) mapa.removeLayer(lineaRuta);
     lineaRuta = L.polyline([st.usuario, c], { color: '#c99a2e', weight: 5, dashArray: '10 8', opacity: 0.95 }).addTo(mapa);
     const dist = Math.round(distanciaM(st.usuario, c));
-    toast(`Ruta sugerida: ${dist} m en línea recta (~${Math.max(1, Math.round(dist / 75))} min caminando)`, 5000);
+    toast(`A ${dist} m, unos ${Math.max(1, Math.round(dist / 75))} min caminando`, 5000);
     if (esEd) seleccionarEdificio(id); else seleccionar(id);
     mapa.fitBounds(L.latLngBounds([st.usuario, c]), { padding: [80, 80], maxZoom: 19 });
   }
@@ -471,7 +485,7 @@
   function usarGPS() {
     if (st.gpsId != null) { detenerGPS('Seguimiento GPS detenido'); return; }
     if (!('geolocation' in navigator)) { toast('Este navegador no permite geolocalización. Toca el mapa donde estás.', 4000); return; }
-    if (!window.isSecureContext) { toast('El GPS requiere HTTPS o localhost. Toca el mapa donde estás.', 5000); return; }
+    if (!window.isSecureContext) { toast('El GPS no está disponible en esta conexión. Toca el mapa donde estás.', 5000); return; }
     toast('Buscando tu ubicación…', 0);
     let primera = true;
     st.zonaGPS = undefined;
@@ -504,7 +518,7 @@
     Object.keys(st.kpi.recintos).forEach((id) => { st.vivo[id] = Sim.ocupacionEnVivo(id, t, st.escenario); });
     Object.keys(st.kpi.edificios_sim || {}).forEach((id) => { st.vivoEd[id] = Sim.ocupacionEnVivo(id, t, st.escenario); });
     $('reloj-hora').textContent = Sim.horaTxt(t.getHours() * 60 + t.getMinutes());
-    $('reloj-dia').textContent = `${DIAS_LARGO[t.getDay()]} ${t.getDate()}/${t.getMonth() + 1}`;
+    $('reloj-dia').textContent = `${cap(DIAS_LARGO[t.getDay()])} ${t.getDate()}/${t.getMonth() + 1}`;
     $('badge-demo').hidden = !st.demo;
     pintarMapa();
     pintarAhora(t);
@@ -513,11 +527,12 @@
     if (st.tab === 'cuellos') pintarCuellos(t);
     if (st.tab === 'generales') pintarGenerales(t);
     if (st.tab === 'mantto') pintarMantto();
+    pulirTextos();
     if (st.seleccion) (st.seleccion.startsWith('ed:') ? pintarEdificio(st.seleccion.slice(3), t) : pintarDetalle(st.seleccion, t));
   }
 
   function programarMinuto() {
-    const tick = () => { $('prox-act').textContent = st.demo ? '(pausada: hora simulada)' : `(próxima en ${60 - new Date().getSeconds()} s)`; };
+    const tick = () => { $('prox-act').textContent = st.demo ? '(en pausa mientras eliges otra hora)' : `(próxima en ${60 - new Date().getSeconds()} s)`; };
     tick(); setInterval(tick, 1000);
     const alinear = () => setTimeout(() => { if (!st.demo) actualizar(); alinear(); }, (60 - new Date().getSeconds()) * 1000 + 50);
     alinear();
@@ -540,11 +555,27 @@
     const cajones = ids.filter((id) => categoria(id) === 'estacionamientos');
     const capCaj = cajones.reduce((s, id) => s + st.kpi.recintos[id].capacidad_max, 0);
     const eds = Object.keys(st.vivoEd);
-    $('kpi-recintos').textContent = eds.reduce((s_, e) => s_ + (st.vivoEd[e].abierto ? st.vivoEd[e].ocupacion : 0), 0).toLocaleString('es-MX');
-    $('kpi-areas').textContent = suma((id) => categoria(id) === 'areas').toLocaleString('es-MX');
-    $('kpi-cajones').textContent = capCaj ? suma((id) => categoria(id) === 'estacionamientos').toLocaleString('es-MX') : '–';
-    $('kpi-alertas').textContent = ab.filter((id) => ['alto', 'critico'].includes(st.vivo[id].estado)).length;
-    $('kpi-escenario').textContent = escenarioActivo() === 'examenes' ? 'Exámenes' : 'Ordinario';
+    const enFI = eds.reduce((s_, e) => s_ + (st.vivoEd[e].abierto ? st.vivoEd[e].ocupacion : 0), 0) + suma((id) => categoria(id) === 'areas');
+    const llenasN = ab.filter((id) => ['alto', 'critico'].includes(st.vivo[id].estado) && !esPark(id)).length;
+    // Indicadores clave del alcance: salas PC-PUMA, horas pico de la Biblioteca, laboratorios de Geomática y tráfico
+    const salas = ids.filter((id) => st.prop[id].subtipo === 'computo');
+    const ocS = salas.reduce((a, id) => a + st.vivo[id].ocupacion, 0), capS = salas.reduce((a, id) => a + st.vivo[id].capacidad, 0);
+    const salaTop = salas.slice().sort((a, b) => st.vivo[b].saturacion - st.vivo[a].saturacion)[0];
+    const bib = ids.find((id) => st.prop[id].subtipo === 'biblioteca');
+    const picosBib = bib ? horasPico(bib) : [];
+    const labs = LABS_GEO.filter((id) => st.vivo[id]);
+    const enUso = labs.filter((id) => st.vivo[id].abierto && st.vivo[id].ocupacion >= 4);
+    const labTop = labs.slice().sort((a, b) => st.vivo[b].ocupacion - st.vivo[a].ocupacion)[0];
+    const ocL = labs.reduce((a, id) => a + st.vivo[id].ocupacion, 0), capL = labs.reduce((a, id) => a + st.vivo[id].capacidad, 0);
+    const trafico = ids.filter((id) => ['pasillo', 'acceso', 'plaza'].includes(st.prop[id].subtipo) && st.vivo[id].abierto)
+      .reduce((a, id) => a + Sim.flujoHora(id, t, st.escenario), 0);
+    const card = (attr, titulo, valor, sub, extra = '') => `<button class="kpi kpi-btn${extra}" ${attr}><span class="kpi-t">${titulo}</span><span class="kpi-v">${valor}</span><span class="kpi-l">${sub}</span></button>`;
+    $('kpis-clave').innerHTML = !ab.length ? '' :
+      card(salaTop ? `data-ir="${salaTop}"` : '', 'Salas PC-PUMA', capS ? pct(ocS / capS) : '—', `Ocupación ahora · ${ocS} de ${capS} lugares`) +
+      card(bib ? `data-ir="${bib}"` : '', 'Horas pico de la Biblioteca', picosBib.length ? lista(picosBib.map((q) => q.hora)) : '—', bib ? `Ahora ${valorTxt(bib, st.vivo[bib])}` : '', ' destacado') +
+      card(labTop ? `data-ir="${labTop}"` : '', 'Laboratorios de Geomática', `${enUso.length} de ${labs.length}`, `Con grupo ahora · ${capL ? pct(ocL / capL) : '—'} de ocupación`) +
+      card('data-guia-tab="generales"', 'Tráfico en áreas comunes', Math.round(trafico).toLocaleString('es-MX'), 'Personas que pasan por hora');
+    $('resumen-linea').innerHTML = `${enFI.toLocaleString('es-MX')} personas en la Facultad · ${capCaj ? suma((id) => categoria(id) === 'estacionamientos').toLocaleString('es-MX') : '0'} vehículos · ${llenasN} ${llenasN === 1 ? 'zona casi llena' : 'zonas casi llenas'} · ${escenarioActivo() === 'examenes' ? 'Periodo de exámenes' : 'Demanda ordinaria'}`;
 
     const alertas = [];
     ab.forEach((id) => {
@@ -556,31 +587,88 @@
     const pesoAlerta = (a) => (a.ed ? 1 : categoria(a.id) === 'recintos' ? 0 : 2);
     alertas.sort((a, b) => pesoAlerta(a) - pesoAlerta(b));
     $('lista-alertas').innerHTML = !ab.length
-      ? '<div class="alerta info">Fuera de horario de servicio. Usa “Simular hora” para explorar el día.</div>'
+      ? '<div class="alerta info">Fuera del horario de servicio (7:00 a 21:00). Usa “Elegir hora” para explorar el día.</div>'
       : alertas.slice(0, 4).map(({ id, r, ed }) => `<div class="alerta critico"><span class="ico">!</span><span><b>${esc(ed ? st.propEd[id].nombre : nombre(id))}:</b> ${r.texto}</span>
-          <button class="ctl" ${ed ? `data-ed="${id}"` : `data-ir="${id}"`}>Ver</button></div>`).join('') + (alertas.length > 4 ? `<p class="nota">y ${alertas.length - 4} alertas más</p>` : '');
+          <button class="ctl" ${ed ? `data-ed="${id}"` : `data-ir="${id}"`}>Ver</button></div>`).join('') + (alertas.length > 4 ? `<p class="nota">Y ${alertas.length - 4} alertas más.</p>` : '');
 
     const d = distanciasUsuario();
     if (st.filtro === 'edificios') {
       $('lista-recintos').innerHTML = eds.sort((a, b) => st.vivoEd[b].saturacion - st.vivoEd[a].saturacion).map((e) => {
         const v = st.vivoEd[e], ed = st.propEd[e];
         return `<button class="fila" data-ed="${e}">
-          <span><span class="nom">${esc(ed.nombre)}</span><br><span class="meta">${v.abierto ? `${v.ocupacion.toLocaleString('es-MX')} / ${v.capacidad.toLocaleString('es-MX')} personas` : 'Cerrado'} · ${ed.niveles} niveles · Conjunto ${ed.conjunto === 'norte' ? 'Norte' : 'Sur'}${d ? ` · a ${Math.round(d['ed:' + e])} m` : ''}</span></span>
+          <span><span class="nom">${esc(ed.nombre)}</span><br><span class="meta">${v.abierto ? `${v.ocupacion.toLocaleString('es-MX')} / ${v.capacidad.toLocaleString('es-MX')} personas` : 'Cerrado'} · ${ed.niveles} niveles · Conjunto ${ed.conjunto === 'norte' ? 'Norte' : 'Sur'}${d ? ` · A ${Math.round(d['ed:' + e])} m` : ''}</span></span>
           <span class="chip ${v.estado}">${v.abierto ? pct(v.saturacion) : ETQ_ESTADO.cerrado}</span>
           <span class="barra-ocup"><span style="width:${v.saturacion * 100}%;background:${COLOR[v.estado]}"></span></span></button>`;
       }).join('');
       return;
     }
-    const lista = ids.filter((id) => st.filtro === 'todo' || categoria(id) === st.filtro)
-      .sort((a, b) => st.vivo[b].saturacion - st.vivo[a].saturacion);
-    $('lista-recintos').innerHTML = lista.map((id) => {
+    const zonasLista = ids.filter((id) => st.filtro === 'todo' || categoria(id) === st.filtro)
+      .sort((a, b) => (esPark(a) - esPark(b)) || nivelQ(b, st.vivo[b]) - nivelQ(a, st.vivo[a]));
+    $('lista-recintos').innerHTML = zonasLista.map((id) => {
       const v = st.vivo[id], p = st.prop[id];
       return `<button class="fila" data-ir="${id}">
-        <span><span class="nom">${esc(p.nombre)}</span><br><span class="meta">${v.abierto ? (esPark(id) ? `${v.ocupacion} vehículos · ${ETQ_PARK[v.estado].toLowerCase()}` : esDens(id) ? `${v.ocupacion} personas · ${ETQ_LOS[v.estado].toLowerCase()}` : `${v.ocupacion} / ${v.capacidad} ${unidadTxt(v.unidad)}`) : 'Cerrado'} · ${esc(ubicacionTxt(p))}${d ? ` · a ${Math.round(d[id])} m` : ''}</span></span>
+        <span><span class="nom">${esc(p.nombre)}</span><br><span class="meta">${v.abierto ? (esPark(id) ? `${v.ocupacion} vehículos · ${ETQ_PARK[v.estado]}` : esDens(id) ? `${v.ocupacion} personas · ${ETQ_LOS[v.estado]}` : `${v.ocupacion} / ${v.capacidad} ${unidadTxt(v.unidad)}`) : 'Cerrado'} · ${esc(ubicacionTxt(p))}${d ? ` · A ${Math.round(d[id])} m` : ''}</span></span>
         <span class="chip ${v.estado}">${v.abierto ? valorTxt(id, v) : ETQ_ESTADO.cerrado}</span>
         <span class="barra-ocup"><span style="width:${v.saturacion * 100}%;background:${COLOR[v.estado]}"></span></span>
       </button>`;
     }).join('') || '<p class="nota">Sin zonas en esta categoría.</p>';
+  }
+
+  // ------------------------------------------------------------------ recintos clave y predicciones semanales
+  const LABS_GEO = ['LAB_SIG', 'LABORATORIOS', 'LAB_FOTO'];           // los tres laboratorios de Geomática
+  const esClave = (id) => !!st.prop[id] && (st.prop[id].subtipo === 'computo' || st.prop[id].subtipo === 'biblioteca' || LABS_GEO.includes(id));
+  const DIAS_SEM = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  const DIA_PL = { lun: 'lunes', mar: 'martes', mie: 'miércoles', jue: 'jueves', vie: 'viernes', sab: 'sábados' };
+  const DIA_SG = { lun: 'lunes', mar: 'martes', mie: 'miércoles', jue: 'jueves', vie: 'viernes', sab: 'sábado' };
+  function diasTxt(ds) {
+    if (ds.length === 6) return 'todos los días';
+    if (ds.length === 5 && !ds.includes('sab')) return 'de lunes a viernes';
+    return `los ${lista(ds.map((d) => DIA_PL[d]))}`;
+  }
+  /** Horas pico de hoy (hasta dos, separadas al menos 2 h) a partir de la misma serie de la ficha. */
+  function horasPico(id) {
+    const v = st.vivo[id] || st.vivoEd[id];
+    const hs = horasDeHoy(id, v || { ocupacion: 0, saturacion: 0, abierto: false }, ahora()).filter((q) => q.estado !== 'cerrado');
+    const orden = hs.slice().sort((a, b) => nivelQ(id, b) - nivelQ(id, a));
+    const out = [];
+    orden.forEach((q) => { if (out.length < 2 && out.every((o) => Math.abs(o.minuto - q.minuto) >= 120)) out.push(q); });
+    return out.sort((a, b) => a.minuto - b.minuto);
+  }
+  /** Comportamiento de cada día de la semana (perfil típico): momento más lleno y su nivel. */
+  function tendencia(id) {
+    const esc_ = escenarioActivo(), paso = st.kpi.meta.paso_min, r = Rz(id);
+    return DIAS_SEM.map((dia) => {
+      const serie = (r.perfiles[esc_] || {})[dia];
+      if (!serie) return null;
+      let k = -1, mejor = -1;
+      serie.ocupacion.forEach((oc, i) => { const n = Sim.equivalente(id, oc); if (n > mejor) { mejor = n; k = i; } });
+      if (k < 0 || mejor <= 0) return null;
+      const oc = serie.ocupacion[k];
+      return { dia, minuto: Sim.INICIO_MIN + k * paso, nivel: mejor, ocupacion: oc, estado: Sim.estadoZona(id, oc, oc / r.capacidad_max) };
+    }).filter(Boolean);
+  }
+  const horaRedonda = (m) => Sim.horaTxt(Math.round(m / 60) * 60);
+  /** Frase de predicción semanal al estilo “La Biblioteca se saturará los martes a las 17:00”. */
+  function prediccionSemanal(id, nombreTxt) {
+    const tds = tendencia(id);
+    if (!tds.length) return null;
+    const dens = esDens(id);
+    const sat = tds.filter((q) => q.estado === 'critico'), alto = tds.filter((q) => q.estado === 'alto' || q.estado === 'critico');
+    const grupoPorHora = (qs) => { const g = {}; qs.forEach((q) => { const h = horaRedonda(q.minuto); (g[h] = g[h] || []).push(q); });
+      return Object.entries(g).sort((a, b) => b[1].length - a[1].length || Math.max(...b[1].map((q) => q.nivel)) - Math.max(...a[1].map((q) => q.nivel))); };
+    const sujeto = cap(bArt(nombreTxt));
+    if (alto.length) {
+      const base = sat.length ? sat : alto;
+      const grupos = grupoPorHora(base);
+      const verbo = sat.length ? (dens ? 'se congestionará' : 'se saturará') : (dens ? 'estará concurrido' : 'estará casi lleno');
+      let t = `${sujeto} ${verbo} ${diasTxt(grupos[0][1].map((q) => q.dia))} hacia las ${grupos[0][0]}`;
+      if (grupos[1]) t += ` y ${diasTxt(grupos[1][1].map((q) => q.dia))} hacia las ${grupos[1][0]}`;
+      const pico = base.reduce((a, q) => (q.nivel > a.nivel ? q : a));
+      return { id, texto: `${t}.`, nivel: pico.nivel, dias: base.length, estado: sat.length ? 'critico' : 'alto' };
+    }
+    const pico = tds.reduce((a, q) => (q.nivel > a.nivel ? q : a));
+    const val = esPark(id) ? `${pico.ocupacion} vehículos` : dens ? `${(pico.ocupacion / Rz(id).superficie_m2).toFixed(2)} personas por m²` : pct(pico.ocupacion / Rz(id).capacidad_max);
+    return { id, texto: `${sujeto} tiene su mayor uso los ${DIA_PL[pico.dia]} hacia las ${horaRedonda(pico.minuto)} (${val}), sin llegar a llenarse.`, nivel: pico.nivel, dias: 0, estado: pico.estado };
   }
 
   // ------------------------------------------------------------------ P1 Cuellos de botella
@@ -608,7 +696,7 @@
   const hTxt = (h) => (h < 0.05 ? '0 h' : h < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(1)} h`);
   function contextoDia(t) {
     const esc_ = escenarioActivo();
-    return `${DIAS_LARGO[t.getDay()]} ${Sim.horaTxt(t.getHours() * 60 + t.getMinutes())} · ${esc_ === 'examenes' ? 'periodo de exámenes' : 'día ordinario'} · lo ocurrido hoy + pronóstico del resto del día`;
+    return `${cap(DIAS_LARGO[t.getDay()])} ${Sim.horaTxt(t.getHours() * 60 + t.getMinutes())} · ${esc_ === 'examenes' ? 'Periodo de exámenes' : 'Demanda ordinaria'}`;
   }
 
   function pintarCuellos(t) {
@@ -619,11 +707,35 @@
     const ext = ids.filter((id) => categoria(id) === 'areas').sort(ordenHoy);
     const edTop = Object.keys(st.kpi.edificios_sim || {}).sort(ordenHoy).slice(0, 6);
     const conSat = interiores.filter((id) => hoy(id).horasAlto > 0);
-    const fr = (id, ed) => { const h = hoy(id), n = ed ? st.propEd[id].nombre : nombre(id);
-      return `<b>${esc(n)}</b> (${hTxt(h.horasAlto)} ≥ 75 %${h.horasAltoPasadas > 0.05 && h.horasAltoPasadas < h.horasAlto - 0.05 ? `, ${hTxt(h.horasAltoPasadas)} ya ocurridas` : ''}, pico ${h.horaPico})`; };
-    $('txt-cuellos').innerHTML = (conSat.length ? `Hoy los cuellos de botella son ${conSat.slice(0, 3).map((id) => fr(id)).join(', ')}. ` : 'Hoy ningún recinto llega al 75 %. ') +
-      (ext.length && hoy(ext[0]).horasAlto > 0 ? `En exteriores se congestiona <b>${esc(nombre(ext[0]))}</b> en los cambios de clase. ` : '') +
-      (edTop.length && hoy(edTop[0]).horasAlto > 0 ? `Entre los edificios completos: ${edTop.filter((e) => hoy(e).horasAlto > 0).slice(0, 3).map((e) => fr(e, true)).join(', ')}.` : '');
+    const nE = (e) => bArt(st.propEd[e].nombre), nZ = (id) => bArt(nombre(id));
+    const mAhora = Sim.minutoDelDia(t);
+    const yaPaso = (h) => h.pico && h.pico.minuto <= mAhora;
+    let txt = '';
+    if (conSat.length) {
+      const a = conSat[0], h = hoy(a);
+      txt += `${cap(nZ(a))} es el espacio más saturado de hoy: pasa ${horasTxt(h.horasAlto)} por encima del 75 % de su capacidad`;
+      txt += h.horasAltoPasadas > 0.05 && h.horasAltoPasadas < h.horasAlto - 0.05 ? `, de las cuales ya transcurrieron ${horasTxt(h.horasAltoPasadas)}` : '';
+      txt += `, y su momento más lleno ${yaPaso(h) ? 'fue' : 'será'} a las ${h.horaPico}. `;
+      const sig = conSat.slice(1, 3);
+      if (sig.length) txt += `Le ${sig.length > 1 ? 'siguen' : 'sigue'} ${lista(sig.map((id) => `${nZ(id)} (${horasTxt(hoy(id).horasAlto)})`))}. `;
+    } else txt += 'Hoy ningún recinto llega al 75 % de su capacidad. ';
+    if (ext.length && hoy(ext[0]).horasAlto > 0) txt += `Al aire libre, ${nZ(ext[0])} se llena en cada cambio de clase. `;
+    const edSat = edTop.filter((e) => hoy(e).horasAlto > 0).slice(0, 3);
+    if (edSat.length) txt += `Entre los edificios, los que más se llenan son ${lista(edSat.map(nE))}. `;
+    const visitasHoy = (e) => hoy(e).personasHora * 60 / (st.kpi.edificios_sim[e].permanencia_min || 120);
+    const masGente = Object.keys(st.kpi.edificios_sim || {}).sort((a, b) => visitasHoy(b) - visitasHoy(a)).slice(0, 2);
+    if (masGente.length) txt += `Por número de personas, los más concurridos son ${lista(masGente.map((e) => `${nE(e)} (unas ${Math.round(visitasHoy(e)).toLocaleString('es-MX')} hoy)`))}${masGente.some((e) => !edSat.includes(e)) ? ', aunque casi nunca llegan a llenarse' : ''}.`;
+    $('txt-cuellos').innerHTML = txt;
+    // Predicciones de la semana: recintos, exteriores y edificios que se llenan
+    const cand = ids.filter((id) => !esPark(id)).map((id) => prediccionSemanal(id, nombre(id)))
+      .concat(Object.keys(st.kpi.edificios_sim || {}).map((e) => { const p = prediccionSemanal(e, st.propEd[e].nombre); if (p) p.ed = true; return p; }))
+      .filter((p) => p && p.dias > 0).sort((a, b) => (b.estado === 'critico') - (a.estado === 'critico') || (!b.ed && esClave(b.id)) - (!a.ed && esClave(a.id)) || b.dias - a.dias || b.nivel - a.nivel);
+    // Tres más relevantes + la sala PC-PUMA más usada + el Laboratorio de Fotogrametría (recintos clave del proyecto)
+    const preds = cand.slice(0, 3);
+    const salaP = ids.filter((id) => st.prop[id].subtipo === 'computo').map((id) => prediccionSemanal(id, nombre(id))).filter(Boolean).sort((a, b) => b.nivel - a.nivel)[0];
+    [salaP, prediccionSemanal('LAB_FOTO', nombre('LAB_FOTO'))].forEach((p) => { if (p && !preds.some((q) => q.id === p.id)) preds.push(p); });
+    $('lista-predicciones').innerHTML = preds.map((p) => `<button class="pred" ${p.ed ? `data-ed="${p.id}"` : `data-ir="${p.id}"`}>
+        <span class="pred-ico" style="background:${COLOR[p.estado] || COLOR.bajo}">${p.estado === 'critico' ? '!' : p.estado === 'alto' ? '↑' : '✓'}</span><span>${p.texto}</span></button>`).join('');
 
     // Mapa de calor de HOY: misma serie que la ficha (lo ocurrido + pronóstico)
     const est_ = ids.filter((id) => categoria(id) === 'estacionamientos').sort((a, b) => nivelQ(b, hoy(b).pico || {}) - nivelQ(a, hoy(a).pico || {}));
@@ -646,7 +758,7 @@
         const vv = esEd ? st.vivoEd[cl] : st.vivo[cl];
         let tramo = serie.slice((h - h0) * porHora, (h - h0) * porHora + porHora).filter((q) => q.estado !== 'cerrado');
         if (cls === 'ahora') tramo = vv && vv.abierto ? [vv] : [];   // la hora actual muestra el valor de ahora (igual que el mapa y la ficha)
-        const oc = tramo.length ? Math.round(tramo.reduce((a, q) => a + q.ocupacion, 0) / tramo.length) : 0;
+        const oc = tramo.length ? Math.max(...tramo.map((q) => q.ocupacion)) : 0;
         const m = oc / rz.capacidad_max;
         const e = !tramo.length ? 'cerrado' : Sim.estadoZona(cl, oc, m);
         const dz = !esEd && esDens(cl);
@@ -655,16 +767,16 @@
       html += '</tr>';
     });
     $('tabla-calor').innerHTML = html;
-    $('cap-calor').textContent = 'tenue = ya ocurrió · % de capacidad; exteriores en personas/m²; estacionamientos en vehículos';
+    $('cap-calor').textContent = 'Valor más alto de cada hora. Las celdas tenues ya ocurrieron. Exteriores en personas por m²; estacionamientos en vehículos.';
 
     // Horas saturadas HOY: ya ocurridas + previstas
     const rec = interiores.filter((id) => hoy(id).horasAlto > 0 || hoy(id).horasCritico > 0).concat(interiores.filter((id) => !(hoy(id).horasAlto > 0)).slice(0, Math.max(0, 6 - conSat.length)));
     grafica('g-cuellos', {
       type: 'bar',
       data: { labels: rec.map(nombre), datasets: [
-        { label: 'Ya ocurrió hoy', data: rec.map((id) => +hoy(id).horasAltoPasadas.toFixed(2)), backgroundColor: COLOR.alto, stack: 'h' },
-        { label: 'Previsto el resto del día', data: rec.map((id) => +(hoy(id).horasAlto - hoy(id).horasAltoPasadas).toFixed(2)), backgroundColor: 'rgba(238,138,43,.4)', stack: 'h' }] },
-      options: { indexAxis: 'y', scales: { x: { stacked: true, title: { display: true, text: 'horas ≥ 75 % hoy' } }, y: { stacked: true } } },
+        { label: 'Ya transcurridas', data: rec.map((id) => +hoy(id).horasAltoPasadas.toFixed(2)), backgroundColor: COLOR.alto, stack: 'h' },
+        { label: 'Previstas', data: rec.map((id) => +(hoy(id).horasAlto - hoy(id).horasAltoPasadas).toFixed(2)), backgroundColor: 'rgba(238,138,43,.4)', stack: 'h' }] },
+      options: { indexAxis: 'y', scales: { x: { stacked: true, title: { display: true, text: 'Horas' } }, y: { stacked: true } } },
     });
 
     const grupoHist = (f) => { const ids_ = ids.filter(f); const n = st.kpi.meta.historico.semanas.length;
@@ -675,12 +787,12 @@
       type: 'line',
       data: { labels: sem, datasets: [['Salas de cómputo', hSal], ['Biblioteca', hBib], ['Laboratorios', hLab]].map(([l, d], k) => ({
         label: l, data: d.map((x) => Math.round(x * 100)), borderColor: SERIE[k], backgroundColor: SERIE[k], tension: 0.3, pointRadius: 3, borderWidth: 2.5 })) },
-      options: { scales: { y: { min: 0, title: { display: true, text: '% saturación media' } } } },
+      options: { scales: { y: { min: 0, title: { display: true, text: '% de ocupación media' } } } },
     });
     const bib = ids.find((id) => st.prop[id].subtipo === 'biblioteca');
     const cambio = Math.round((hSal[hSal.length - 1] / hSal[0] - 1) * 100);
-    $('txt-tendencia').innerHTML = (bib ? `La Biblioteca recibe ~<b>${res(bib).visitas_dia.toLocaleString('es-MX')} visitas</b> y <b>${res(bib).prestamos_dia} préstamos</b> al día, con pico a las ${res(bib).hora_pico}. ` : '') +
-      `En el semestre, la saturación media de las salas de cómputo ${cambio >= 0 ? 'subió' : 'bajó'} <b>${Math.abs(cambio)} %</b>, con repunte en la semana de parciales.`;
+    $('txt-tendencia').innerHTML = `A lo largo del semestre, la ocupación media de las salas de cómputo ${cambio >= 0 ? 'subió' : 'bajó'} <b>${Math.abs(cambio)} %</b>, con un repunte en la semana de parciales.` +
+      (bib ? ` En un día normal, la ${nombre(bib)} recibe unas <b>${res(bib).visitas_dia.toLocaleString('es-MX')} visitas</b> y presta <b>${res(bib).prestamos_dia} libros</b>.` : '');
 
   }
 
@@ -696,14 +808,16 @@
     const subs = Object.keys(porSub).sort((a, b) => porSub[b] - porSub[a]);
     const top = gen.slice().sort((a, b) => ph(b) - ph(a)).slice(0, 6);
     const norte = gen.filter((id) => (st.prop[id].conjunto || (st.propEd[st.prop[id].id_edificio] || {}).conjunto) === 'norte').reduce((s, id) => s + ph(id), 0);
-    $('txt-generales').innerHTML = `Hoy, por tipo de espacio, <b>${plural(subs[0])}</b> concentran el ${Math.round(porSub[subs[0]] / total * 100)} % del uso ` +
-      `y <b>${plural(subs[1])}</b> el ${Math.round(porSub[subs[1]] / total * 100)} %. ` +
-      `La zona más usada es <b>${esc(nombre(top[0]))}</b> (pico ${hoy(top[0]).horaPico}). ` +
-      `El Conjunto Sur recibe el ${Math.round((1 - norte / total) * 100)} % del uso de las instalaciones generales. ` +
-      (() => { const pr_ = gen.filter((id) => st.prop[id].descanso === 'principal'); const d_ = gen.filter((id) => st.prop[id].descanso);
-        const sd = d_.reduce((s_, id) => s_ + ph(id), 0);
-        return pr_.length ? `Las áreas de descanso principales (${pr_.map((id) => esc(nombre(id))).join(', ')}) reúnen el ${Math.round(pr_.reduce((s_, id) => s_ + ph(id), 0) / sd * 100)} % del uso de todas las áreas de descanso.` : ''; })();
-    $('cap-generales').textContent = '6 zonas más usadas · continua = ya ocurrió, punteada = pronóstico · líneas: alto 75 % y crítico 90 %';
+    const pc = (x) => Math.round(x / total * 100);
+    const prD = gen.filter((id) => st.prop[id].descanso === 'principal'), tD = gen.filter((id) => st.prop[id].descanso);
+    const sumD = tD.reduce((s_, id) => s_ + ph(id), 0), sumPr = prD.reduce((s_, id) => s_ + ph(id), 0);
+    const surPc = 100 - pc(norte);
+    const art = (x) => (['pasillo', 'acceso', 'jardin', 'auditorio'].includes(x) ? 'los' : 'las');
+    $('txt-generales').innerHTML = `Hoy, ${art(subs[0])} ${plural(subs[0])} concentran el ${pc(porSub[subs[0]])} % del movimiento en las instalaciones generales, ${subs[1] ? `seguid${art(subs[0]) === 'los' ? 'os' : 'as'} de ${art(subs[1])} ${plural(subs[1])} (${pc(porSub[subs[1]])} %)` : ''}. ` +
+      `El lugar más concurrido es ${bArt(nombre(top[0]))}, con su momento más lleno a las ${hoy(top[0]).horaPico}. ` +
+      `${surPc >= 50 ? `La mayor parte de la actividad (${surPc} %) ocurre en el Conjunto Sur` : `La mayor parte de la actividad (${100 - surPc} %) ocurre en el Conjunto Norte`}. ` +
+      (prD.length && sumD ? `Entre las áreas de descanso, las principales (${lista(prD.map((id) => esc(nombre(id))))}) reúnen el ${Math.round(sumPr / sumD * 100)} % de las visitas.` : '');
+    $('cap-generales').textContent = 'Las seis zonas más usadas. Línea continua: lo que ya pasó; punteada: pronóstico.';
     const iAhora = hoy(top[0]).serie.findIndex((q) => q.tipo === 'ahora');
     grafica('g-generales-linea', {
       type: 'line',
@@ -721,7 +835,7 @@
     });
     // Áreas de descanso
     const desc = ids.filter((id) => st.prop[id].descanso).sort((a, b) => (st.prop[a].descanso === 'principal' ? -1 : 1) - (st.prop[b].descanso === 'principal' ? -1 : 1) || ph(b) - ph(a));
-    $('tabla-descanso').innerHTML = '<tr><th>Área</th><th>Tipo</th><th class="num">Ahora<br><small>pers./m²</small></th><th class="num">Pico hoy</th><th>Wi-Fi ahora</th></tr>' +
+    $('tabla-descanso').innerHTML = '<tr><th>Área</th><th>Tipo</th><th class="num">Ahora<br><small>Personas por m²</small></th><th class="num">Hora más llena</th><th>Wi-Fi ahora</th></tr>' +
       desc.map((id) => { const v = st.vivo[id], w = Sim.wifi(id, v.ocupacion);
         return `<tr><td><button class="link" data-ir="${id}">${esc(nombre(id))}</button></td><td>${st.prop[id].descanso === 'principal' ? '<b>Principal</b>' : 'Secundaria'}</td>
         <td class="num"><span class="chip ${v.estado}">${v.abierto ? (v.ocupacion / st.prop[id].superficie_m2).toFixed(2) : '—'}</span></td><td class="num">${hoy(id).horaPico}</td>
@@ -734,38 +848,38 @@
     const saturadas = wifiOrd.filter((id) => wp(id) >= 0.9);
     grafica('g-wifi', {
       type: 'bar',
-      data: { labels: wifiOrd.slice(0, 12).map(nombre), datasets: [{ label: 'Uso pico de la red Wi-Fi hoy (%)', data: wifiOrd.slice(0, 12).map((id) => Math.round(wp(id) * 100)),
+      data: { labels: wifiOrd.slice(0, 12).map(nombre), datasets: [{ label: 'Uso máximo de hoy (%)', data: wifiOrd.slice(0, 12).map((id) => Math.round(wp(id) * 100)),
         backgroundColor: wifiOrd.slice(0, 12).map((id) => COLOR[Sim.estado(wp(id))]) }] },
-      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, title: { display: true, text: '% de uso de la red en su hora pico de hoy' } } } },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, title: { display: true, text: '% de uso de la red' } } } },
     });
-    $('txt-wifi').innerHTML = `Hoy ${saturadas.length} zona${saturadas.length === 1 ? '' : 's'} llega${saturadas.length === 1 ? '' : 'n'} a saturar su red Wi-Fi en su hora pico (${saturadas.slice(0, 3).map((id) => `<b>${esc(nombre(id))}</b>`).join(', ')}${saturadas.length > 3 ? '…' : ''}). ` +
-      (sinCob.length ? `Sin cobertura: ${sinCob.map((id) => esc(nombre(id))).join(', ')}.` : '');
+    $('txt-wifi').innerHTML = (saturadas.length
+      ? `Hoy la red Wi-Fi se satura en ${lista(saturadas.slice(0, 3).map((id) => bArt(nombre(id))))}${saturadas.length > 3 ? ` y ${saturadas.length - 3} zonas más` : ''} durante su hora más concurrida. `
+      : 'Hoy la red Wi-Fi tiene capacidad suficiente en todas las zonas. ') +
+      (wifiOrd.length ? `La zona con más demanda es ${bArt(nombre(wifiOrd[0]))}, con un uso máximo del ${pct(wp(wifiOrd[0]))}. ` : '') +
+      (sinCob.length ? `Sin cobertura: ${lista(sinCob.map((id) => esc(nombre(id))))}.` : '');
     // Red PC-PUMA oficial vs. modelo
     if (red()) {
-      const v_ = red().validacion, hs = red().uso.horas.map((h) => `${h}:00`);
+      const hs = red().uso.horas.map((h) => `${h}:00`);
       grafica('g-red-conj', {
         type: 'line',
         data: { labels: hs, datasets: [
-          { label: 'Norte · oficial', data: red().uso.conjuntos.norte.relativo.map((x) => Math.round(x * 100)), borderColor: '#002b5c', backgroundColor: '#002b5c', borderWidth: 3, tension: 0.3, pointRadius: 0 },
-          { label: 'Norte · modelo', data: v_.norte.simulado_relativo.map((x) => Math.round(x * 100)), borderColor: '#002b5c', backgroundColor: '#002b5c', borderDash: [6, 4], borderWidth: 2, tension: 0.3, pointRadius: 0 },
-          { label: 'Sur · oficial', data: red().uso.conjuntos.sur.relativo.map((x) => Math.round(x * 100)), borderColor: '#c99a2e', backgroundColor: '#c99a2e', borderWidth: 3, tension: 0.3, pointRadius: 0 },
-          { label: 'Sur · modelo', data: v_.sur.simulado_relativo.map((x) => Math.round(x * 100)), borderColor: '#c99a2e', backgroundColor: '#c99a2e', borderDash: [6, 4], borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+          { label: 'Conjunto Norte', data: red().uso.conjuntos.norte.relativo.map((x) => Math.round(x * 100)), borderColor: '#002b5c', backgroundColor: '#002b5c', borderWidth: 3, tension: 0.3, pointRadius: 0 },
+          { label: 'Conjunto Sur', data: red().uso.conjuntos.sur.relativo.map((x) => Math.round(x * 100)), borderColor: '#c99a2e', backgroundColor: '#c99a2e', borderWidth: 3, tension: 0.3, pointRadius: 0 }] },
         options: { scales: { y: { min: 0, max: 100, title: { display: true, text: '% del máximo del día' } } }, plugins: { legend: { labels: { boxWidth: 10, font: { size: 11 } } } } },
       });
-      $('txt-red').innerHTML = `La Red PC-PUMA tiene <b>${red().ap_total} puntos de acceso</b> en la FI (${Object.values(red().ap_por_edificio).length} edificios con antenas). ` +
-        `Su uso real crece desde las 7:00, se mantiene alto de 11:00 a 17:00 y cae después de las 19:00. ` +
-        `El modelo de ocupación del SIG reproduce esa curva: correlación de <b>${v_.norte.correlacion.toFixed(2)}</b> en el Conjunto Norte y <b>${v_.sur.correlacion.toFixed(2)}</b> en el Sur.`;
+      $('txt-red').innerHTML = `La Facultad cuenta con <b>${red().ap_total} puntos de acceso</b> de la Red PC-PUMA, repartidos en ${Object.values(red().ap_por_edificio).filter((n) => n).length} edificios. ` +
+        'Su uso crece desde las 7:00, se mantiene alto entre las 11:00 y las 17:00 y disminuye después de las 19:00, igual que la ocupación de los espacios.';
       const e_ = red().estadisticas;
       if (e_) {
-        $('red-stats').innerHTML = [[e_.clientes_unicos.toLocaleString('es-MX'), `clientes únicos (${e_.periodo})`],
-          [e_.clientes_promedio_dia.toLocaleString('es-MX'), 'clientes por día'], [`${e_.gb_promedio_por_cliente} GB`, 'uso promedio por cliente'],
-          [Math.round(e_.clientes_promedio_dia / red().ap_total), 'clientes por punto de acceso al día']]
+        $('red-stats').innerHTML = [[e_.clientes_unicos.toLocaleString('es-MX'), `Usuarios distintos (${e_.periodo})`],
+          [e_.clientes_promedio_dia.toLocaleString('es-MX'), 'Usuarios por día'], [`${e_.gb_promedio_por_cliente} GB`, 'Consumo medio por usuario'],
+          [Math.round(e_.clientes_promedio_dia / red().ap_total), 'Usuarios por punto de acceso al día']]
           .map(([v, l]) => `<div class="kpi"><span class="kpi-v">${v}</span><span class="kpi-l">${l}</span></div>`).join('');
         const apps = Object.entries(e_.trafico_tb).sort((a_, b_) => b_[1] - a_[1]);
         grafica('g-red-apps', {
           type: 'bar',
           data: { labels: apps.map((x) => x[0]), datasets: [{ label: 'TB', data: apps.map((x) => x[1]), backgroundColor: apps.map((_, k) => SERIE[k % SERIE.length]) }] },
-          options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: `terabytes transferidos (${e_.periodo})` } } } },
+          options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: `Terabytes transferidos (${e_.periodo})` } } } },
         });
       }
     }
@@ -774,7 +888,7 @@
     const flujoPico = (id) => Math.round((hoy(id).pico ? hoy(id).pico.ocupacion : 0) * 60 / perm(id));
     const flujoDia = (id) => Math.round(ph(id) * 60 / perm(id));
     const traf = gen.filter((id) => ['pasillo', 'acceso', 'plaza'].includes(st.prop[id].subtipo)).sort((a, b) => flujoPico(b) - flujoPico(a));
-    $('tabla-trafico').innerHTML = '<tr><th>Zona</th><th class="num">Ahora<br><small>pers./h</small></th><th class="num">Pico hoy<br><small>pers./h</small></th><th class="num">Total hoy</th></tr>' +
+    $('tabla-trafico').innerHTML = '<tr><th>Zona</th><th class="num">Ahora<br><small>Por hora</small></th><th class="num">Máximo hoy<br><small>Por hora</small></th><th class="num">Total hoy</th></tr>' +
       traf.map((id) => `<tr><td><button class="link" data-ir="${id}">${esc(nombre(id))}</button></td><td class="num">${Sim.flujoHora(id, t, st.escenario).toLocaleString('es-MX')}</td>
         <td class="num">${flujoPico(id).toLocaleString('es-MX')} <small>${hoy(id).horaPico}</small></td><td class="num">${flujoDia(id).toLocaleString('es-MX')}</td></tr>`).join('');
 
@@ -786,36 +900,54 @@
 
   // ------------------------------------------------------------------ P3 Mantenimiento
   function pintarMantto() {
-    $('ctx-mantto').textContent = `Índice del semestre (promedio lunes a viernes) · columna “Hoy”: ${contextoDia(ahora()).split(' · ')[0]}`;
+    $('ctx-mantto').textContent = `Índice del semestre, de lunes a viernes · La columna “Hoy” corresponde al ${DIAS_LARGO[ahora().getDay()]}`;
     const esc_ = escenarioActivo();
     const eds = Object.keys(st.kpi.edificios).sort((a, b) => st.kpi.edificios[b][esc_].indice_prioridad - st.kpi.edificios[a][esc_].indice_prioridad);
     const re = (e) => st.kpi.edificios[e][esc_];
     const zonas = Object.keys(st.kpi.recintos).sort((a, b) => res(b).indice_prioridad - res(a).indice_prioridad);
-    const edAlta = eds.filter((e) => re(e).prioridad === 'alta');
-    const zAlta = zonas.filter((id) => res(id).prioridad === 'alta' && st.kpi.recintos[id].unidad === 'personas');
-    $('txt-mantto').innerHTML = (edAlta.length ? `Edificios con atención <b>alta</b>: ${edAlta.map((e) => `<b>${esc(st.propEd[e].nombre)}</b>`).join(', ')}. ` : `El edificio con mayor índice es <b>${esc(st.propEd[eds[0]].nombre)}</b> (${re(eds[0]).indice_prioridad.toFixed(2)}). `) +
-      (zAlta.length ? `Zonas con atención alta: ${zAlta.map((id) => `<b>${esc(nombre(id))}</b>`).join(', ')}. ` : '') +
-      'El índice combina uso por m² y horas en saturación: ahí conviene programar primero la revisión de equipo, mobiliario y limpieza, o ampliar capacidad en horas pico.';
+    const num = (x) => Math.round(x).toLocaleString('es-MX');
+    /** Razón principal (el criterio que más pesa) en palabras. */
+    const razon = (r, paso) => { const c = r.componentes_atencion || {};
+      const k = ['saturacion', 'volumen', 'intensidad'].sort((a, b) => (c[b] || 0) - (c[a] || 0))[0];
+      return k === 'volumen' ? (paso ? `por donde pasan unas ${num(r.flujo_dia)} personas al día` : `que recibe unas ${num(r.flujo_dia)} personas al día`)
+        : k === 'intensidad' ? 'que tiene un uso muy intenso para su tamaño' : `que pasa ${horasTxt(r.horas_alto_dia)} al día por encima del 75 %`; };
+    const item = (n, r, paso) => `${bArt(n)}, ${razon(r, paso)}`;
+    const listaPC = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join('; ')}; y ${xs[xs.length - 1]}`);
+    const esPaso = (id) => ['pasillo', 'acceso'].includes(st.prop[id].subtipo);
+    const personasZ = zonas.filter((id) => st.kpi.recintos[id].unidad === 'personas');
+    const altos = eds.filter((e) => re(e).prioridad === 'alta').map((e) => item(st.propEd[e].nombre, re(e)))
+      .concat(personasZ.filter((id) => res(id).prioridad === 'alta').map((id) => item(nombre(id), res(id), esPaso(id))));
+    const medios = eds.filter((e) => re(e).prioridad === 'media').map((e) => item(st.propEd[e].nombre, re(e)))
+      .concat(personasZ.filter((id) => res(id).prioridad === 'media').map((id) => item(nombre(id), res(id), esPaso(id))));
+    const masVisitado = eds.slice().sort((a, b) => re(b).flujo_dia - re(a).flujo_dia).slice(0, 2);
+    $('txt-mantto').innerHTML = 'Para decidir qué atender primero se combinan tres criterios: cuántas personas usan cada espacio, qué tan intenso es ese uso por metro cuadrado y cuántas horas al día pasa casi lleno. ' +
+      (altos.length ? `Requieren atención prioritaria ${listaPC(altos)}. ` : '') +
+      (medios.length ? `En un segundo nivel están ${listaPC(medios.slice(0, 3))}. ` : '') +
+      `Los edificios con más visitas son ${lista(masVisitado.map((e) => bArt(st.propEd[e].nombre)))}: aunque casi nunca se llenan, su desgaste es mayor por la cantidad de gente que los recorre.`;
+    const comp = (e, k) => +(((re(e).componentes_atencion || {})[k] || 0) / 3).toFixed(3);
     grafica('g-mantto', {
       type: 'bar',
-      data: { labels: eds.map((e) => st.propEd[e].nombre), datasets: [{ label: 'Índice de atención', data: eds.map((e) => re(e).indice_prioridad), backgroundColor: eds.map((e) => COLOR_PRIORIDAD[re(e).prioridad]) }] },
-      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 1 } } },
+      data: { labels: eds.map((e) => st.propEd[e].nombre), datasets: [
+        { label: 'Personas al día', data: eds.map((e) => comp(e, 'volumen')), backgroundColor: '#3a7bd5', stack: 'i' },
+        { label: 'Uso por m²', data: eds.map((e) => comp(e, 'intensidad')), backgroundColor: '#c99a2e', stack: 'i' },
+        { label: 'Horas casi lleno', data: eds.map((e) => comp(e, 'saturacion')), backgroundColor: '#d43d3d', stack: 'i' }] },
+      options: { indexAxis: 'y', scales: { x: { stacked: true, min: 0, max: 1, title: { display: true, text: 'Índice de atención' } }, y: { stacked: true } } },
     });
     if (red()) {
       const eds2 = Object.keys(st.propEd).filter((e) => red().uso.zonas[e]).sort((a, b) => red().uso.zonas[b].intensidad_pico - red().uso.zonas[a].intensidad_pico);
       const mx = red().uso.zonas[eds2[0]].intensidad_pico;
       grafica('g-red-ed', {
         type: 'bar',
-        data: { labels: eds2.map((e) => st.propEd[e].nombre), datasets: [{ label: 'Intensidad de uso de red (oficial)', data: eds2.map((e) => Math.round(red().uso.zonas[e].intensidad_pico / mx * 100)),
+        data: { labels: eds2.map((e) => st.propEd[e].nombre), datasets: [{ label: 'Uso de la red', data: eds2.map((e) => Math.round(red().uso.zonas[e].intensidad_pico / mx * 100)),
           backgroundColor: eds2.map((e, k) => (k < 5 ? '#d43d3d' : k < 12 ? '#ee8a2b' : '#7aa6e0')) }] },
-        options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100, title: { display: true, text: 'índice relativo en hora pico (100 = máximo)' } } } },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100, title: { display: true, text: 'Uso en hora pico (100 = el más alto)' } } } },
       });
-      $('txt-red-ed').innerHTML = `Según la Red PC-PUMA, los edificios con mayor densidad de dispositivos en hora pico son ${eds2.slice(0, 4).map((e) => `<b>${esc(st.propEd[e].nombre)}</b>`).join(', ')}: evidencia real para priorizar mantenimiento y ampliar la red.`;
+      $('txt-red-ed').innerHTML = `Los edificios con más dispositivos conectados en hora pico son ${lista(eds2.slice(0, 4).map((e) => bArt(st.propEd[e].nombre)))}. Son buenos candidatos para reforzar la red y el mantenimiento.`;
     }
-    $('tabla-mantto').innerHTML = '<tr><th>Zona</th><th class="num">Densidad<br><small>uso·h/m²</small></th><th class="num">h ≥ 75 %<br><small>promedio</small></th><th class="num">Hoy<br><small>h ≥ 75 %</small></th><th>Atención</th></tr>' +
-      zonas.map((id) => { const r = res(id), p = st.prop[id]; return `<tr><td><button class="link" data-ir="${id}">${esc(p.nombre)}</button>${p.tipo === 'estacionamiento' ? ' <small>(vehículos)</small>' : ''}</td>
-        <td class="num">${r.densidad_uso.toFixed(2)}</td><td class="num">${r.horas_alto_dia.toFixed(1)}</td><td class="num">${p.tipo === 'estacionamiento' ? '—' : hTxt(hoy(id).horasAlto)}</td><td><span class="chip p-${r.prioridad}">${r.prioridad}</span></td></tr>`; }).join('');
-    $('nota-indice').textContent = `Índice = ${st.kpi.meta.indice_prioridad}. Personas y vehículos se comparan por separado. Promedio lunes a viernes, escenario ${esc_ === 'examenes' ? 'exámenes' : 'ordinario'}.`;
+    $('tabla-mantto').innerHTML = '<tr><th>Zona</th><th class="num">Personas al día</th><th class="num">Uso por m²</th><th class="num">Horas ≥ 75 %<br><small>Día normal</small></th><th class="num">Horas ≥ 75 %<br><small>Hoy</small></th><th>Atención</th></tr>' +
+      zonas.map((id) => { const r = res(id), p = st.prop[id]; return `<tr><td><button class="link" data-ir="${id}">${esc(p.nombre)}</button></td>
+        <td class="num">${p.tipo === 'estacionamiento' ? `${num(r.flujo_dia)} veh.` : num(r.flujo_dia)}</td><td class="num">${r.densidad_uso.toFixed(2)}</td><td class="num">${(Math.round(r.horas_alto_dia * 10) / 10).toLocaleString('es-MX')}</td><td class="num">${p.tipo === 'estacionamiento' ? '—' : (Math.round(hoy(id).horasAlto * 10) / 10).toLocaleString('es-MX')}</td><td><span class="chip p-${r.prioridad}">${cap(r.prioridad)}</span></td></tr>`; }).join('');
+    $('nota-indice').textContent = 'El índice suma, a partes iguales, las personas al día, el uso por metro cuadrado y las horas al día por encima del 75 %, cada uno comparado dentro de su grupo. Los estacionamientos se comparan entre sí.';
   }
 
   // ------------------------------------------------------------------ fichas
@@ -853,7 +985,7 @@
     $('det-edificio').hidden = !p.id_edificio;
     if (p.id_edificio) $('det-edificio').textContent = `Ver ${st.propEd[p.id_edificio] ? st.propEd[p.id_edificio].nombre : 'edificio'} completo`;
     if (!simulada(id)) {
-      $('det-cuerpo').innerHTML = `<div class="alerta info">${ETQ_SUBTIPO[p.subtipo] || 'Zona'}: no se simula su ocupación.</div>
+      $('det-cuerpo').innerHTML = `<div class="alerta info">${ETQ_SUBTIPO[p.subtipo] || 'Zona'} sin monitoreo de ocupación.</div>
         <div class="det-datos">${dato('Ubicación', esc(ubicacionTxt(p)))}${dato('Superficie', `${p.superficie_m2.toLocaleString('es-MX')} m²`)}
         ${d ? dato('Distancia', `${Math.round(d[id])} m`) : ''}${dato('Observaciones', esc(p.observaciones))}</div>`;
       $('det-reglas').innerHTML = ''; $('det-alternativas').innerHTML = ''; $('det-hist').hidden = true;
@@ -865,10 +997,8 @@
     const rs = r.resumen[pr.escenario];
     const u = r.unidad;
     $('det-cuerpo').innerHTML = `
-      <div class="det-grande"><span class="n">${v.ocupacion}</span><span>${esPark(id) ? 'vehículos estacionados (estimado)' : esDens(id) ? 'personas' : `/ ${r.capacidad_max} ${unidadTxt(u)}${est(p, 'capacidad_max')}`}</span>
+      <div class="det-grande"><span class="n">${v.ocupacion}</span><span>${esPark(id) ? 'vehículos estacionados' : esDens(id) ? 'personas' : `/ ${r.capacidad_max} ${unidadTxt(u)}`}</span>
         <span class="chip ${v.estado}">${estadoTxt(id, v.estado)}</span><span class="pct">${v.abierto ? valorTxt(id, v) : ''}</span></div>
-      ${esDens(id) ? '<p class="nota">Área abierta: sin cupo fijo; se evalúa por nivel de servicio (personas por m²).</p>' : ''}
-      ${esPark(id) ? '<p class="nota">Estacionamiento: sin máximo ni alertas; solo indica cuántos vehículos hay (aquí la gente deja su auto, no permanece).</p>' : ''}
       <div class="barra-ocup"><span style="width:${v.saturacion * 100}%;background:${COLOR[v.estado]}"></span></div>
       <div class="det-datos">
         ${dato('Tipo', (ETQ_SUBTIPO[p.subtipo] || p.tipo) + est(p, 'subtipo'))}
@@ -876,13 +1006,12 @@
         ${dato('Superficie', `${p.superficie_m2.toLocaleString('es-MX')} m²`)}
         ${dato('Horario', `${p.hora_apertura}–${p.hora_cierre}${est(p, 'hora_apertura')}`)}
         ${u === 'personas' ? dato('Densidad actual', `${(v.ocupacion / p.superficie_m2).toFixed(2)} personas/m²`) : ''}
-        ${dato('Hora pico típica', rs.hora_pico)}
-        ${p.equipos ? dato('Equipos', `${p.equipos}${est(p, 'equipos')} · ${v.abierto ? (v.ocupacion / p.equipos).toFixed(1) : '0'} pers./equipo`) : ''}
-        ${u === 'personas' && v.abierto ? dato('Flujo ahora', `${Sim.flujoHora(id, t, st.escenario).toLocaleString('es-MX')} personas/h`) : ''}
+        ${p.equipos ? dato('Equipos', `${p.equipos} <small>(${v.abierto ? (v.ocupacion / p.equipos).toFixed(1) : '0'} personas por equipo)</small>`) : ''}
+        ${u === 'personas' && v.abierto ? dato('Personas que pasan por hora', Sim.flujoHora(id, t, st.escenario).toLocaleString('es-MX')) : ''}
         ${wifiTxt(id, v, p)}
         ${p.descanso ? dato('Área de descanso', (p.descanso === 'principal' ? 'Principal' : 'Secundaria') + est(p, 'descanso')) : ''}
-        ${p.subtipo === 'biblioteca' ? dato('Visitas hoy', `${Sim.acumuladoDia(id, t, st.escenario).toLocaleString('es-MX')} <small>de ~${rs.visitas_dia.toLocaleString('es-MX')}/día</small>`) +
-          dato('Préstamos hoy', `${Math.round(Sim.acumuladoDia(id, t, st.escenario) * st.kpi.meta.prestamos_por_visita)} <small>de ~${rs.prestamos_dia}/día</small>`) : ''}
+        ${p.subtipo === 'biblioteca' ? dato('Visitas hoy', `${Sim.acumuladoDia(id, t, st.escenario).toLocaleString('es-MX')} <small>(unas ${rs.visitas_dia.toLocaleString('es-MX')} en un día normal)</small>`) +
+          dato('Préstamos hoy', `${Math.round(Sim.acumuladoDia(id, t, st.escenario) * st.kpi.meta.prestamos_por_visita)} <small>(unos ${rs.prestamos_dia} en un día normal)</small>`) : ''}
         ${d ? dato('Distancia', `${Math.round(d[id])} m`) : ''}
         ${dato('Responsable', esc(p.responsable))}${dato('Observaciones', esc(p.observaciones))}
       </div>`;
@@ -891,14 +1020,14 @@
     const necesita = pr.reglas.some((q) => q.codigo === 'R3');
     $('det-alternativas').innerHTML = necesita && alt.length
       ? '<h3 class="h-sec">Alternativas con espacio</h3>' + alt.slice(0, 3).map((a) => `<button class="fila" ${a.esEdificio ? `data-ed="${a.id}"` : `data-ir="${a.id}"`}>
-          <span><span class="nom">${esc(a.nombre)}</span><br><span class="meta">${valorTxt(a.id, a.ahora)} ahora · ${a.esEdificio ? 'edificio' : esc(ubicacionTxt(st.prop[a.id]))}${a.dist ? ` · a ${Math.round(a.dist)} m` : ''}</span></span>
+          <span><span class="nom">${esc(a.nombre)}</span><br><span class="meta">${valorTxt(a.id, a.ahora)} ahora · ${a.esEdificio ? 'Edificio' : esc(ubicacionTxt(st.prop[a.id]))}${a.dist ? ` · A ${Math.round(a.dist)} m` : ''}</span></span>
           <span class="chip ${a.ahora.estado}">Ir</span></button>`).join('')
       : (necesita ? '<p class="nota">No hay alternativas del mismo tipo con espacio en los próximos 30 min.</p>' : '');
     graficaHistorico([{ label: p.nombre, data: r.historico.sat_media }]);
     graficaRed(p.id_edificio || id);
   }
 
-  /** Hoy por hora (promedio de cada hora; la hora actual = valor de ahora). Misma cifra que el mapa de calor. */
+  /** Hoy por hora (valor más alto de cada hora; la hora actual = valor de ahora). Misma cifra que el mapa de calor. */
   function horasDeHoy(id, v, t) {
     const serie = hoy(id).serie, porHora = 60 / st.kpi.meta.paso_min, r = Rz(id), mAct = Sim.minutoDelDia(t), out = [];
     for (let M = Sim.INICIO_MIN; M <= Sim.FIN_MIN; M += 60) {
@@ -907,7 +1036,7 @@
       const tipo = mAct >= M && mAct < M + 60 ? 'ahora' : M + 60 <= mAct ? 'pasado' : 'futuro';
       if (tipo === 'ahora') { out.push({ minuto: M, hora: Sim.horaTxt(M), tipo, ocupacion: v.ocupacion, saturacion: v.saturacion, estado: v.abierto ? v.estado : 'cerrado' }); continue; }
       if (!tramo.length) { out.push({ minuto: M, hora: Sim.horaTxt(M), tipo, ocupacion: 0, saturacion: 0, estado: 'cerrado' }); continue; }
-      const oc = Math.round(tramo.reduce((a, q) => a + q.ocupacion, 0) / tramo.length);
+      const oc = Math.max(...tramo.map((q) => q.ocupacion));
       out.push({ minuto: M, hora: Sim.horaTxt(M), tipo, ocupacion: oc, saturacion: oc / r.capacidad_max, estado: Sim.estadoZona(id, oc, oc / r.capacidad_max) });
     }
     return out;
@@ -940,21 +1069,21 @@
     if (cierra) sub += (sub ? ' ' : '') + `Cierra a las ${cierra.hora}.`;
     // Datos del día
     const abiertas = diaH.filter((q) => q.estado !== 'cerrado');
-    const pico = abiertas.reduce((a, q) => (!a || nivel(q) > nivel(a) ? q : a), null);
+    const pico = hoy(id).pico ? { ...hoy(id).pico, hora: hoy(id).horaPico } : null;
     const futuras = abiertas.filter((q) => q.tipo === 'futuro' && q.minuto < Sim.FIN_MIN);
     const lleno = ['alto', 'critico'].includes(ahora.estado);
     const mejor = lleno ? futuras.find((q) => ['bajo', 'moderado'].includes(q.estado))
       : futuras.reduce((a, q) => (!a || nivel(q) < nivel(a) ? q : a), null);
     const chips = [
-      pico ? `<span class="pron-chip"><span>${park ? 'Más demanda' : 'Hora más llena'}</span><b>${pico.hora} · ${valor(pico)}</b></span>` : '',
+      r.subtipo === 'biblioteca' || r.uso_principal === 'biblioteca'
+        ? `<span class="pron-chip destacado"><span>Horas pico de hoy</span><b>${lista(horasPico(id).map((q) => q.hora)) || '—'}</b></span>`
+        : pico ? `<span class="pron-chip"><span>${park ? 'Más demanda' : 'Momento más lleno'}</span><b>${pico.hora} · ${valor(pico)}</b></span>` : '',
       mejor && !park ? `<span class="pron-chip bien"><span>${lleno ? 'Próxima hora con espacio' : 'Hora más tranquila'}</span><b>${mejor.hora} · ${valor(mejor)}</b></span>` : '',
       `<span class="pron-chip"><span>${park ? 'Ahora' : 'Ahora'}</span><b>${valor(ahora)}</b></span>`,
     ].join('');
-    const base = pr.escenario === 'examenes' ? 'periodo de exámenes (alta demanda)' : `un ${DIA_NOMBRE[t.getDay()]} típico`;
-    const codigos = pr.reglas.map((q) => q.codigo).join(' · ');
     const unidad = park ? 'vehículos' : dens ? 'personas por m²' : '% de ocupación';
     const lineas = park ? [] : [{ y: st.kpi.meta.umbrales.alto, c: 'alto' }, { y: st.kpi.meta.umbrales.critico, c: 'critico' }];
-    return `<h3 class="h-sec">Pronóstico del día <small>${unidad}, de 7:00 a 21:00</small></h3>
+    return `<h3 class="h-sec">Pronóstico del día <small>${cap(unidad)}</small></h3>
       <div class="pron">
         <div class="pron-tit ${cls}"><span class="pron-ico">${ico}</span><span><b>${tit}</b>${sub ? `<br><small>${sub}</small>` : ''}</span></div>
         <div class="pron-chips">${chips}</div>
@@ -966,15 +1095,16 @@
             <span class="pron-hora">${q.tipo === 'ahora' ? 'Ahora' : q.hora.slice(0, 2).replace(/^0/, '')}</span></div>`).join('')}
         </div>
         ${lineas.length ? `<div class="pron-ley">${lineas.map((l) => `<span><i class="lin" style="border-top-color:${COLOR[l.c]}"></i>${l.c === 'alto' ? 'Alto' : 'Crítico'}</span>`).join('')}</div>` : ''}
-        <p class="pron-pie">Las barras tenues son horas que ya pasaron. Pronóstico con el comportamiento de ${base} y lo observado ahora. <span class="pron-cod" title="Reglas de predicción del proyecto">${codigos}</span></p>
+        <p class="pron-pie">Las barras tenues son horas que ya pasaron.</p>
+        ${!park && prediccionSemanal(id, r.nombre || nombre(id)) ? `<p class="pron-tend"><b>Predicción de la semana</b><br>${prediccionSemanal(id, r.nombre || nombre(id)).texto}</p>` : ''}
       </div>`;
   }
 
   function wifiTxt(id, v, p) {
     const w = Sim.wifi(id, v.ocupacion);
     if (!w.aplica) return '';
-    if (!w.cobertura) return dato('Wi-Fi', `<span class="chip sin">Sin cobertura</span>${est(p, 'wifi_ap')}`);
-    return dato('Uso del Wi-Fi', `<span class="chip ${v.abierto ? w.estado : 'cerrado'}">${v.abierto ? pct(w.saturacion) : '—'}</span><br><small>≈ ${w.dispositivos.toLocaleString('es-MX')} dispositivos conectados${w.vecina ? ' · señal de antenas cercanas' : ''}</small>`);
+    if (!w.cobertura) return dato('Wi-Fi', '<span class="chip sin">Sin cobertura</span>');
+    return dato('Uso del Wi-Fi', `<span class="chip ${v.abierto ? w.estado : 'cerrado'}">${v.abierto ? pct(w.saturacion) : '—'}</span> <small>${w.dispositivos.toLocaleString('es-MX')} dispositivos</small>`);
   }
 
   const red = () => st.kpi.red_pcpuma;
@@ -984,7 +1114,7 @@
     if (!z) return;
     grafica('g-red', {
       type: 'line',
-      data: { labels: red().uso.horas.map((h) => `${h}:00`), datasets: [{ label: 'Uso de la red (oficial)', data: z.relativo.map((x) => Math.round(x * 100)),
+      data: { labels: red().uso.horas.map((h) => `${h}:00`), datasets: [{ label: 'Uso de la red', data: z.relativo.map((x) => Math.round(x * 100)),
         borderColor: '#3a7bd5', backgroundColor: 'rgba(58,123,213,.15)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }] },
       options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, title: { display: true, text: '% del máximo del día' } } } },
     });
@@ -997,7 +1127,7 @@
       type: 'line',
       data: { labels: sem, datasets: series.map((sr, k) => ({ label: sr.label, data: sr.data.map((x) => Math.round(x * 100)),
         borderColor: SERIE[k % SERIE.length], backgroundColor: SERIE[k % SERIE.length], tension: 0.3, pointRadius: 3, borderWidth: 2.5 })) },
-      options: { plugins: { legend: { display: series.length > 1 } }, scales: { y: { min: 0, title: { display: true, text: '% saturación media' } } } },
+      options: { plugins: { legend: { display: series.length > 1 } }, scales: { y: { min: 0, title: { display: true, text: '% de ocupación media' } } } },
     });
   }
 
@@ -1016,18 +1146,17 @@
     const niveles = [...new Set(rids.map((id) => st.prop[id].nivel || 0))].sort((a, b) => a - b);
     const pr = es ? Sim.prediccion(eid, t, st.escenario) : null;
     $('det-cuerpo').innerHTML = `
-      ${v ? `<div class="det-grande"><span class="n">${v.ocupacion.toLocaleString('es-MX')}</span><span>/ ${v.capacidad.toLocaleString('es-MX')} personas en el edificio <span class="est" title="Capacidad estimada por superficie construida y calibrada con los clientes diarios de la Red PC-PUMA">est.</span></span>
+      ${v ? `<div class="det-grande"><span class="n">${v.ocupacion.toLocaleString('es-MX')}</span><span>/ ${v.capacidad.toLocaleString('es-MX')} personas en el edificio</span>
         <span class="chip ${v.estado}">${ETQ_ESTADO[v.estado]}</span><span class="pct">${v.abierto ? pct(v.saturacion) : ''}</span></div>
         <div class="barra-ocup"><span style="width:${v.saturacion * 100}%;background:${COLOR[v.estado]}"></span></div>` : ''}
       <div class="det-datos">
         ${dato('Conjunto', ed.conjunto === 'norte' ? 'Norte' : 'Sur (Anexo)')}${dato('Niveles', ed.niveles + est(ed, 'niveles'))}
-        ${dato('Superficie construida', `${Math.round(ed.superficie_m2 * Math.max(1, ed.niveles)).toLocaleString('es-MX')} m²`)}${dato('Uso principal', (ed.uso_principal || '—') + est(ed, 'uso_principal'))}
+        ${dato('Superficie construida', `${Math.round(ed.superficie_m2 * Math.max(1, ed.niveles)).toLocaleString('es-MX')} m²`)}${dato('Uso principal', cap(ed.uso_principal || '—'))}
         ${v && v.abierto ? dato('Densidad actual', `${(v.ocupacion / (ed.superficie_m2 * Math.max(1, ed.niveles)) * 100).toFixed(1)} personas/100 m²`) : ''}
-        ${ag ? dato('Hora pico típica', ag.hora_pico) : ''}
         ${capR ? dato('En sus recintos', `${ocupR} / ${capR} personas`) : ''}
-        ${ag ? dato('Uso diario', `${Math.round(ag.personas_hora_dia).toLocaleString('es-MX')} personas·h`) : ''}
+        ${ag ? dato('Nivel de atención', `<span class="chip p-${ag.prioridad}">${cap(ag.prioridad)}</span> <small>${Math.round(ag.flujo_dia).toLocaleString('es-MX')} personas en un día normal</small>`) : ''}
+        ${es ? dato('Visitas hoy', Math.round(hoy(eid).personasHora * 60 / (es.permanencia_min || 120)).toLocaleString('es-MX')) : ''}
         ${v ? wifiTxtEd(eid, v) : ''}
-        ${es ? dato('Forma del perfil', es.perfil_fuente) : ''}
         ${dato('Observaciones', esc(ed.observaciones))}
       </div>
       ${rids.length ? niveles.map((n) => `<h3 class="h-sec">${nivelTxt(n)}</h3>` + rids.filter((id) => (st.prop[id].nivel || 0) === n).map((id) => {
@@ -1035,7 +1164,7 @@
         return vr ? `<button class="fila" data-ir="${id}"><span><span class="nom">${esc(nombre(id))}</span><br><span class="meta">${vr.abierto ? `${vr.ocupacion} / ${vr.capacidad} personas` : 'Cerrado'}</span></span>
           <span class="chip ${vr.estado}">${vr.abierto ? pct(vr.saturacion) : 'Cerrado'}</span><span class="barra-ocup"><span style="width:${vr.saturacion * 100}%;background:${COLOR[vr.estado]}"></span></span></button>`
           : `<button class="fila" data-ir="${id}"><span class="nom">${esc(nombre(id))}</span></button>`;
-      }).join('')).join('') : '<p class="nota">Este edificio no tiene recintos digitalizados; se simula su ocupación como edificio completo.</p>'}`;
+      }).join('')).join('') : ''}`;
     $('det-reglas').innerHTML = pr ? pronosticoHTML(eid, v, pr, t) : '';
     $('det-alternativas').innerHTML = '';
     if (es) {
@@ -1047,8 +1176,8 @@
   function wifiTxtEd(eid, v) {
     const w = Sim.wifi(eid, v.ocupacion);
     if (!w.aplica) return '';
-    if (!w.cobertura) return dato('Wi-Fi', '<span class="chip sin">Sin antenas registradas</span>');
-    return dato('Uso del Wi-Fi', `<span class="chip ${v.abierto ? w.estado : 'cerrado'}">${v.abierto ? pct(w.saturacion) : '—'}</span><br><small>≈ ${w.dispositivos.toLocaleString('es-MX')} dispositivos conectados${w.vecina ? ' · señal de antenas cercanas' : ''}</small>`);
+    if (!w.cobertura) return dato('Wi-Fi', '<span class="chip sin">Sin cobertura</span>');
+    return dato('Uso del Wi-Fi', `<span class="chip ${v.abierto ? w.estado : 'cerrado'}">${v.abierto ? pct(w.saturacion) : '—'}</span> <small>${w.dispositivos.toLocaleString('es-MX')} dispositivos</small>`);
   }
 
 
@@ -1111,6 +1240,7 @@
     document.addEventListener('click', (e) => {
       if (e.target.closest('.aviso-alt')) { const k = $('aviso').querySelector('.aviso-cab'); st.avisoCerrado = k && k.dataset.clave; $('aviso').hidden = true; }
       const b = e.target.closest('[data-ir]'); if (b) { seleccionar(b.dataset.ir); return; }
+      const bg = e.target.closest('[data-guia-tab]'); if (bg) { cerrarResumen(); if (st.seleccion) cerrarDetalle(); irTab(bg.dataset.guiaTab); return; }
       const br = e.target.closest('[data-ruta]'); if (br) { dibujarRuta(br.dataset.ruta, br.dataset.esed === '1'); return; }
       const be = e.target.closest('[data-ed]'); if (be) seleccionarEdificio(be.dataset.ed);
     });
@@ -1197,29 +1327,29 @@
     ponerModo('ocupacion');
     irTab('ahora');
     ponerHora(2, 1020);
-    toast('Escenario crítico: periodo de exámenes, martes 17:00 (bibliotecas llenas)', 3500);
+    toast('Periodo de exámenes, martes 17:00', 3500);
   }
 
   // ------------------------------------------------------------------ demostración guiada
   const PASOS = [
-    { tit: 'GeoSIG FI-UNAM', txt: 'Mapa de ocupación de la Facultad: 26 edificios, 13 recintos y 23 áreas comunes digitalizados en QGIS. El color de cada zona indica su saturación.',
+    { tit: 'GeoSIG FI-UNAM', txt: 'El mapa muestra la ocupación de la Facultad: 26 edificios, 13 recintos y 23 áreas comunes. El color de cada espacio indica qué tan lleno está.',
       accion: () => { if (st.seleccion) cerrarDetalle(); ponerEscenario('auto'); ponerPiso('todas'); ponerModo('ocupacion'); irTab('ahora'); ponerHora(2, 450); verTodo(); } },
-    { tit: 'Simulación en vivo', txt: 'El tablero se actualiza cada minuto con el reloj de la tableta. Son las 11:00 del martes, cambio de clase: los salones se vacían unos minutos y los pasillos se llenan. Durante la clase, las áreas comunes vuelven a la calma.',
+    { tit: 'Información en vivo', txt: 'El tablero se actualiza cada minuto. Son las 11:00 del martes, cambio de clase: los salones se vacían unos minutos y los pasillos se llenan. Durante la clase, las áreas comunes vuelven a la calma.',
       accion: () => { if (st.seleccion) cerrarDetalle(); irTab('ahora'); ponerHora(2, 660); } },
-    { tit: 'Cuello de botella detectado', txt: 'A las 17:00 la Biblioteca Antonio Dovalí Jaime está llena: las bibliotecas son los espacios que sí se saturan. La regla R3 lo marca, pronostica la siguiente hora y sugiere alternativas. Los laboratorios de Geomática, en cambio, nunca se llenan (grupos de 4 a 12).',
+    { tit: 'Cuello de botella detectado', txt: 'A las 17:00 la Biblioteca Antonio Dovalí Jaime está llena: las bibliotecas son los espacios que más se saturan. Su ficha lo marca, muestra el pronóstico del día y sugiere otras bibliotecas con espacio. Los laboratorios, en cambio, casi nunca se llenan.',
       accion: () => { ponerHora(2, 1020); seleccionar('BIB'); } },
     { tit: 'Edificios y plantas', txt: 'Cada recinto está ligado a su edificio y su nivel. En el Edificio A: auditorio en planta baja, Biblioteca en el nivel 1 y laboratorios en el nivel 5.',
       accion: () => seleccionarEdificio('A') },
-    { tit: '¿Dónde estoy? y ¿a dónde ir?', txt: 'Martes 11:00, estás en la Biblioteca del Edificio A y está llena. Con el GPS, o tocando el mapa cuando no hay señal en interiores, el SIG sabe en qué zona está el usuario. Si está saturada, sugiere el lugar más cercano del mismo tipo con espacio (otra biblioteca, otra sala PC-PUMA u otra área recreativa) y te lleva a él.',
+    { tit: '¿Dónde estoy y a dónde ir?', txt: 'Martes 11:00: estás en la Biblioteca del Edificio A y está llena. Con el GPS, o tocando el mapa, el sistema sabe dónde estás y te sugiere el lugar más cercano del mismo tipo que tiene espacio.',
       accion: () => { if (st.seleccion) cerrarDetalle(); ponerHora(2, 660); const c = st.centroides.BIB; if (c) fijarUsuario(L.latLng(c[0], c[1]), 'manual');
         setTimeout(() => { const b = document.querySelector('.aviso-alt'); if (b) b.click(); }, 1200); } },
-    { tit: 'Instalaciones generales y conectividad', txt: 'Áreas de descanso, tráfico peatonal y red Wi-Fi. Las antenas por edificio y la curva de uso por hora son datos oficiales de la Red PC-PUMA.',
+    { tit: 'Instalaciones generales y conectividad', txt: 'Áreas de descanso, tráfico peatonal, estacionamientos y red Wi-Fi. El modo Wi-Fi del mapa muestra qué tan cargada está la red en cada espacio.',
       accion: () => { if (st.seleccion) cerrarDetalle(); ponerModo('wifi'); irTab('generales'); verTodo(); } },
-    { tit: 'Escenario de exámenes', txt: 'En periodo de exámenes la demanda de la Biblioteca y de las salas de cómputo sube; el mapa de calor y las alertas cambian.',
+    { tit: 'Escenario de exámenes', txt: 'En periodo de exámenes sube la demanda de bibliotecas y salas de cómputo; el mapa de calor y las alertas cambian.',
       accion: () => { ponerEscenario('examenes'); ponerModo('ocupacion'); irTab('cuellos'); ponerHora(3, 735); } },
-    { tit: 'Zonas que requieren atención', txt: 'El índice de atención combina qué tan intensamente se usa cada espacio y cuántas horas al día pasa saturado. La intensidad de uso de la red confirma qué edificios atender primero.',
+    { tit: 'Zonas que requieren atención', txt: 'El índice de atención combina cuántas personas usan cada espacio, qué tan intenso es ese uso y cuántas horas al día pasa casi lleno. Así se decide qué atender primero.',
       accion: () => { ponerEscenario('auto'); ponerModo('ocupacion'); irTab('mantto'); } },
-    { tit: 'Resumen para decidir', txt: 'Las tres preguntas de la Coordinación, respondidas en una sola pantalla y con acciones sugeridas.',
+    { tit: 'Guía de uso', txt: 'La guía explica cómo usar el sistema y resume la situación de hoy, con accesos directos a cada pestaña.',
       accion: () => { salirGuia(); abrirResumen(); } },
   ];
   let pasoGuia = 0;
@@ -1237,48 +1367,78 @@
   }
   function salirGuia() { $('guia').hidden = true; document.body.classList.remove('guia-activa'); }
 
-  // ------------------------------------------------------------------ resumen ejecutivo
+  // ------------------------------------------------------------------ guía de uso (con la situación de hoy)
   function abrirResumen() {
     const t = ahora();
-    pintarCuellos(t); pintarGenerales(t); pintarMantto();
+    pintarCuellos(t); pintarGenerales(t); pintarMantto(); pulirTextos();
     const ids = Object.keys(st.kpi.recintos);
     const ab = ids.filter((id) => st.vivo[id].abierto);
-    const personas = Object.values(st.vivoEd).reduce((s_, v) => s_ + (v.abierto ? v.ocupacion : 0), 0) +
-      ab.filter((id) => categoria(id) === 'areas').reduce((s_, id) => s_ + st.vivo[id].ocupacion, 0);
-    const alertas = ab.filter((id) => ['alto', 'critico'].includes(st.vivo[id].estado)).length;
-    const r_ = st.kpi.red_pcpuma;
-    $('res-sub').textContent = `${DIAS_LARGO[t.getDay()]} ${Sim.horaTxt(t.getHours() * 60 + t.getMinutes())} · escenario ${escenarioActivo() === 'examenes' ? 'de exámenes' : 'ordinario'}${st.demo ? ' (hora simulada)' : ''}`;
-    $('res-kpis').innerHTML = [[personas.toLocaleString('es-MX'), 'personas en la FI ahora'], [alertas, 'zonas en alto o crítico'],
-      [r_ ? `~${r_.ap_total}` : '—', 'antenas Wi-Fi (PC-PUMA)'], [r_ && r_.estadisticas ? r_.estadisticas.clientes_promedio_dia.toLocaleString('es-MX') : '—', 'clientes de red por día']]
-      .map(([v, l]) => `<div class="kpi"><span class="kpi-v">${v}</span><span class="kpi-l">${l}</span></div>`).join('');
+    const enEd = Object.values(st.vivoEd).reduce((s_, v) => s_ + (v.abierto ? v.ocupacion : 0), 0);
+    const enAreas = ab.filter((id) => categoria(id) === 'areas').reduce((s_, id) => s_ + st.vivo[id].ocupacion, 0);
+    const llenas = ab.filter((id) => ['alto', 'critico'].includes(st.vivo[id].estado) && !esPark(id));
+    const masLleno = ab.filter((id) => !esPark(id)).sort((a, b) => nivelQ(b, st.vivo[b]) - nivelQ(a, st.vivo[a]))[0];
+    const recSat = ids.filter((id) => categoria(id) === 'recintos').sort((a, b) => hoy(b).horasAlto - hoy(a).horasAlto);
+    const generalesTop = ids.filter((id) => categoria(id) === 'areas' || st.prop[id].tipo === 'instalacion_general').sort((a, b) => hoy(b).personasHora - hoy(a).personasHora)[0];
+    const esc_ = escenarioActivo();
+    const edAt = Object.keys(st.kpi.edificios).sort((a, b) => st.kpi.edificios[b][esc_].indice_prioridad - st.kpi.edificios[a][esc_].indice_prioridad);
+    const nZ = (id) => bArt(nombre(id));
+    const hora = Sim.horaTxt(t.getHours() * 60 + t.getMinutes());
+    const total = enEd + enAreas;
 
-    const rec = ids.filter((id) => categoria(id) === 'recintos').sort((a, b) => hoy(b).horasAlto - hoy(a).horasAlto);
-    const wifiSat = ids.filter((id) => st.kpi.recintos[id].wifi_cobertura && (hoy(id).wifiPico || 0) >= 0.9).sort((a, b) => hoy(b).wifiPico - hoy(a).wifiPico);
-    const sinCob = ids.filter((id) => st.kpi.recintos[id].wifi_dispositivos_por_persona && !st.kpi.recintos[id].wifi_cobertura);
-    const descP = ids.filter((id) => st.prop[id].descanso === 'principal').sort((a, b) => hoy(b).personasHora - hoy(a).personasHora);
-    const eds = Object.keys(st.kpi.edificios).sort((a, b) => st.kpi.edificios[b][escenarioActivo()].indice_prioridad - st.kpi.edificios[a][escenarioActivo()].indice_prioridad);
-    const n_ = (id) => `<b>${esc(nombre(id))}</b>`;
-    const bloque = (tit, cuerpo, accion) => `<div class="res-bloque"><h3>${tit}</h3><p>${cuerpo}</p><p class="res-accion"><b>Acción sugerida:</b> ${accion}</p></div>`;
+    $('res-sub').textContent = `${cap(DIAS_LARGO[t.getDay()])} ${hora} · ${esc_ === 'examenes' ? 'Periodo de exámenes' : 'Demanda ordinaria'}${st.demo ? ' · Hora elegida' : ''}`;
+    $('res-kpis').innerHTML = [[total.toLocaleString('es-MX'), 'Personas en la Facultad'], [llenas.length, 'Zonas casi llenas o llenas'],
+      [masLleno ? valorTxt(masLleno, st.vivo[masLleno]) : '—', masLleno ? `Lo más lleno: ${nombre(masLleno)}` : 'Lo más lleno'],
+      [recSat[0] ? horasTxt(hoy(recSat[0]).horasAlto) : '—', recSat[0] ? `Casi lleno hoy: ${nombre(recSat[0])}` : 'Casi lleno hoy']]
+      .map(([v, l]) => `<div class="kpi"><span class="kpi-v">${v}</span><span class="kpi-l">${esc(l)}</span></div>`).join('');
+
+    const sec = (ico, tit, cuerpo) => `<section class="guia-sec"><h3><span class="guia-ico">${ico}</span>${tit}</h3>${cuerpo}</section>`;
+    const pasos = (xs) => `<ul class="guia-lista">${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+    const ir = (tab) => `<button class="ctl ctl-chico" data-guia-tab="${tab}">Abrir →</button>`;
+    const u = st.kpi.meta.umbrales, P = (x) => Math.round(x * 100);
+    const muestra = (c) => `<i class="guia-color" style="background:${COLOR[c]}"></i>`;
+
     $('res-cuerpo').innerHTML =
-      bloque('1. ¿Dónde están los cuellos de botella?', $('txt-cuellos').innerHTML,
-        `ampliar horario o número de equipos en ${n_(rec[0])} y ${n_(rec[1])}, y canalizar la demanda en hora pico hacia salas del mismo tipo con espacio (el SIG las sugiere en cada alerta).`) +
-      bloque('2. ¿Cómo se distribuye el uso de las instalaciones generales?', `${$('txt-generales').innerHTML} ${$('txt-wifi').innerHTML}`,
-        `${wifiSat.length ? `reforzar la red Wi-Fi en ${wifiSat.slice(0, 2).map(n_).join(' y ')}` : 'mantener la red actual'}${sinCob.length ? `, dar cobertura a ${sinCob.map(n_).join(', ')}` : ''}${descP.length ? ` y ampliar mobiliario de descanso en ${n_(descP[0])}` : ''}.`) +
-      bloque('3. ¿Qué zonas requieren atención (mantenimiento o más recursos)?', `${$('txt-mantto').innerHTML} ${$('txt-red-ed').innerHTML || ''}` + listaAtencion(eds),
-        `programar primero la revisión de ${eds.slice(0, 2).map((e) => `<b>${esc(st.propEd[e].nombre)}</b>`).join(' y ')} y reforzar limpieza, mobiliario y red en sus horas pico.`);
+      '<p class="guia-intro">GeoSIG muestra, minuto a minuto, qué tan ocupados están los espacios de la Facultad de Ingeniería: edificios, bibliotecas, salas PC-PUMA, laboratorios, auditorios, áreas comunes y estacionamientos. ' +
+      (ab.length ? `Ahora mismo hay ${total.toLocaleString('es-MX')} personas en la Facultad${masLleno ? ` y el lugar más lleno es ${nZ(masLleno)} (${valorTxt(masLleno, st.vivo[masLleno])})` : ''}.` : 'En este momento la Facultad está fuera de su horario de servicio (7:00 a 21:00).') + '</p>' +
+
+      sec('🗺️', 'Cómo leer el mapa', pasos([
+        `El color de cada espacio indica su ocupación: ${muestra('bajo')} menos del ${P(u.moderado)} %, ${muestra('moderado')} de ${P(u.moderado)} a ${P(u.alto)} %, ${muestra('alto')} de ${P(u.alto)} a ${P(u.critico)} % y ${muestra('critico')} ${P(u.critico)} % o más.`,
+        'La trama indica el tipo de espacio: rayas para pasillos, puntos para plazas y áreas de descanso, marcas de pasto para jardines y una “P” para estacionamientos. Los recintos llevan doble línea.',
+        'Con <b>Ocupación</b> y <b>Wi-Fi</b>, arriba a la derecha, eliges qué muestran los colores.',
+        'El selector <b>Planta</b>, a la izquierda, deja ver solo los edificios y recintos de ese nivel.',
+        '<b>Conjunto Norte</b>, <b>Conjunto Sur</b> y <b>Todo</b> acercan el mapa a cada zona de la Facultad.',
+      ])) +
+
+      sec('👆', 'Consultar un espacio', pasos([
+        'Toca cualquier espacio en el mapa, o en la lista de la pestaña <b>Ahora</b>, para abrir su ficha.',
+        'La ficha muestra cuántas personas hay, el uso del Wi-Fi, el pronóstico de 7:00 a 21:00 y la predicción de la semana. Las barras tenues son las horas que ya pasaron.',
+        'Los espacios marcados con ★ son las salas PC-PUMA, las bibliotecas y los laboratorios de Geomática.',
+        'En un edificio verás también sus recintos, ordenados por planta.',
+      ])) +
+
+      sec('📍', 'Dónde estás y a dónde ir', pasos([
+        'Al tocar el mapa, el punto azul marca dónde estás. Con <b>Mi ubicación</b>, el GPS lo actualiza mientras caminas.',
+        'Si estás en una biblioteca, una sala PC-PUMA o un área recreativa que está casi llena, aparece una ventana con el lugar más cercano del mismo tipo que tiene espacio.',
+        'Toca <b>Ir</b> y el mapa te lleva a ese lugar.',
+      ])) +
+
+      sec('📊', 'Las pestañas del panel',
+        `<div class="guia-tabs">
+          <div><b>Ahora</b><p>Los indicadores clave (salas PC-PUMA, horas pico de la Biblioteca, laboratorios de Geomática y tráfico), las alertas y la lista de espacios.${llenas.length ? ` Hay ${llenas.length} ${llenas.length === 1 ? 'zona casi llena' : 'zonas casi llenas o llenas'}.` : ''}</p>${ir('ahora')}</div>
+          <div><b>Cuellos</b><p>Dónde y cuándo se satura la Facultad hoy, y las predicciones de la semana.${recSat[0] && hoy(recSat[0]).horasAlto > 0 ? ` Destaca ${nZ(recSat[0])}, con ${horasTxt(hoy(recSat[0]).horasAlto)} por encima del 75 %.` : ''}</p>${ir('cuellos')}</div>
+          <div><b>Generales</b><p>Pasillos, plazas, áreas de descanso, Wi-Fi y estacionamientos.${generalesTop ? ` El lugar más concurrido hoy es ${nZ(generalesTop)}.` : ''}</p>${ir('generales')}</div>
+          <div><b>Atención</b><p>Qué espacios necesitan primero mantenimiento o más recursos, según las personas que los usan, la intensidad de uso y las horas que pasan casi llenos.${edAt[0] ? ` Encabeza la lista ${bArt(st.propEd[edAt[0]].nombre)}.` : ''}</p>${ir('mantto')}</div>
+        </div>`) +
+
+      sec('🕑', 'Explorar otro momento', pasos([
+        '<b>Elegir hora</b> muestra cualquier día y hora de la semana; <b>Reproducir</b> avanza el día de 15 en 15 minutos. <b>Volver a la hora actual</b> regresa al tiempo real.',
+        'El <b>Escenario</b> cambia entre demanda ordinaria y periodo de exámenes, cuando bibliotecas y salas de cómputo se llenan más.',
+        '<b>▶ Recorrido</b> presenta el sistema paso a paso.',
+      ]));
     $('resumen').hidden = false;
     $('res-cerrar').focus();
   }
-  /** Lista corta de lo que requiere atención (edificios y zonas con nivel alto o medio). */
-  function listaAtencion(eds) {
-    const esc_ = escenarioActivo();
-    const items = eds.map((e) => ({ n: st.propEd[e].nombre, r: st.kpi.edificios[e][esc_], ed: true }))
-      .concat(Object.keys(st.kpi.recintos).filter((id) => st.kpi.recintos[id].unidad === 'personas').map((id) => ({ n: nombre(id), r: res(id) })))
-      .filter((x) => x.r.prioridad !== 'baja').sort((a, b) => b.r.indice_prioridad - a.r.indice_prioridad).slice(0, 8);
-    if (!items.length) return '';
-    return '<span class="res-lista">' + items.map((x) => `<span class="res-item"><span class="chip p-${x.r.prioridad}">${x.r.prioridad === 'alta' ? 'Alta' : 'Media'}</span>
-      <b>${esc(x.n)}</b><small>${x.ed ? 'edificio · ' : ''}${x.r.horas_alto_dia.toFixed(1)} h/día saturado · pico ${x.r.hora_pico}</small></span>`).join('') + '</span>';
-  }
+  function pulirTextos() { ['txt-cuellos', 'txt-generales', 'txt-wifi', 'txt-mantto', 'txt-red-ed', 'txt-tendencia', 'txt-red'].forEach((k) => { const el = $(k); if (el) el.innerHTML = limpiar(el.innerHTML); }); }
   function cerrarResumen() { $('resumen').hidden = true; }
 
   function pantallaCompleta() {

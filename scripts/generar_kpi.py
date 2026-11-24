@@ -35,7 +35,7 @@ MULT_EXAMENES = {"biblioteca": 1.35, "computo": 1.30, "laboratorio": 0.85, "estu
 # Clases fijas conocidas (ejemplo del plan: Fotogrametría se satura los martes a las 10:00 h)
 CLASES_FIJAS = {("LAB_FOTO", "mar", 9)}
 # Permanencia media (min) por subtipo: convierte ocupación en flujo (personas que pasan por hora)
-PERMANENCIA_MIN = {"pasillo": 4, "acceso": 2, "plaza": 15, "descanso": 30, "jardin": 35, "cancha": 45, "auditorio": 90,
+PERMANENCIA_MIN = {"pasillo": 6, "acceso": 3, "plaza": 15, "descanso": 30, "jardin": 35, "cancha": 45, "auditorio": 90,
                    "computo": 80, "laboratorio": 110, "biblioteca": 90, "cafeteria": 25, "sanitarios": 5,
                    "estacionamiento": 240, "motos": 240}
 # Conectividad (Wi-Fi) aproximada
@@ -167,7 +167,9 @@ def perfil_base(z, dia, semilla):
     # Exteriores: forma normalizada y escalada a una densidad pico realista
     if not z.get("id_edificio") and z["tipo"] in ("area_comun", "area_verde") and sub in DENSIDAD_PICO:
         cap_dens = 1 / {"pasillo": 1 / 0.7, "acceso": 1 / 0.7}.get(sub, 1 / 0.6)
-        p = p / max(p.max(), 1e-6) * DENSIDAD_PICO[sub] * r_z.uniform(0.85, 1.35) / cap_dens
+        # Las áreas grandes no se llenan parejo: la densidad media baja con la superficie
+        f_area = float(np.clip((1500 / max(z["superficie_m2"], 1)) ** 0.5, 0.45, 1.15))
+        p = p / max(p.max(), 1e-6) * DENSIDAD_PICO[sub] * f_area * r_z.uniform(0.9, 1.2) / cap_dens
     # Horario propio de la zona
     ap, ci = (int(x[:2]) + int(x[3:]) / 60 for x in (z["hora_apertura"], z["hora_cierre"]))
     return p * np.clip((h - ap) / 0.5 + 0.5, 0, 1) * np.clip((ci - h) / 0.5 + 0.5, 0, 1) * (h >= ap) * (h <= ci)
@@ -241,8 +243,18 @@ def carga_red(ocups, r):
     return np.clip(eq * r["wifi_factor"], 0, 1)
 
 
+def indice_atencion(fs):
+    """(volumen + intensidad + saturación) / 3, cada uno normalizado 0–1 dentro del grupo."""
+    vol = norm([f["flujo_dia"] for f in fs])
+    dens = norm([f["densidad_uso"] for f in fs])
+    sat = norm([f["horas_alto_dia"] for f in fs])
+    for f, a, b, c in zip(fs, vol, dens, sat):
+        f["componentes_atencion"] = {"volumen": round(float(a), 3), "intensidad": round(float(b), 3), "saturacion": round(float(c), 3)}
+    return (vol + dens + sat) / 3
+
+
 def prioridad(ix):
-    return "alta" if ix >= 0.60 else "media" if ix >= 0.35 else "baja"
+    return "alta" if ix >= 0.44 else "media" if ix >= 0.28 else "baja"
 
 
 def main():
@@ -397,13 +409,14 @@ def main():
             if r.get("equipos"):
                 f["personas_por_equipo_pico"] = round(float(ocups.max(axis=1).mean()) / r["equipos"], 2)
             filas[rid] = f
-        # Índice de prioridad: 50 % densidad de uso, 50 % horas en saturación alta (solo datos de ocupación).
+        # Índice de atención, a partes iguales: cuántas personas usan el espacio al día (volumen),
+        # qué tan intenso es el uso por m² (desgaste) y cuántas horas pasa por encima del 75 % (saturación).
         # Se normaliza por separado para personas y para vehículos (no son comparables).
         for unidad in ("personas", "vehiculos"):
             ids = [i for i in filas if not i.startswith("ED:") and recintos[i]["unidad"] == unidad]
             if not ids:
                 continue
-            ix = 0.5 * norm([filas[i]["densidad_uso"] for i in ids]) + 0.5 * norm([filas[i]["horas_alto_dia"] for i in ids])
+            ix = indice_atencion([filas[i] for i in ids])
             for i, v in zip(ids, ix):
                 filas[i]["indice_prioridad"] = round(float(v), 3)
                 filas[i]["prioridad"] = prioridad(v)
@@ -425,7 +438,7 @@ def main():
                       "capacidad_total": edificios_sim[e]["capacidad_max"],
                       "personas_hora_recintos": round(sum(filas[i]["personas_hora_dia"] for i in rs), 1)})
             agg[e] = f
-        ix = 0.5 * norm([agg[e]["densidad_uso"] for e in eids]) + 0.5 * norm([agg[e]["horas_alto_dia"] for e in eids])
+        ix = indice_atencion([agg[e] for e in eids])
         for e, v in zip(eids, ix):
             agg[e]["indice_prioridad"] = round(float(v), 3)
             agg[e]["prioridad"] = prioridad(v)
@@ -481,7 +494,7 @@ def main():
             "dias": DIAS, "escenarios": ["ordinario", "examenes"], "estados": ESTADOS, "umbrales": UMBRALES,
             "calendario": CALENDARIO, "wifi": WIFI, "prestamos_por_visita": PRESTAMOS_POR_VISITA,
             "historico": {"semanas": SEMANAS, "nota": "Histórico sintético del semestre: tendencia creciente y repunte en parciales."},
-            "indice_prioridad": "50 % densidad de uso + 50 % horas en saturación ≥ 75 % (normalizadas); alta ≥ 0.60, media ≥ 0.35",
+            "indice_prioridad": "1/3 personas al día + 1/3 uso por m² + 1/3 horas ≥ 75 % (normalizados en su grupo); alta ≥ 0.44, media ≥ 0.28",
         },
         "recintos": recintos,
         "edificios": resumen_ed,
