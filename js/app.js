@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const Sim = window.Simulacion;
-  const VERSION = '20261124-1630';   // igual que en index.html: obliga al navegador a usar archivos de la misma versión
+  const VERSION = '20261124-1745';   // igual que en index.html: obliga al navegador a usar archivos de la misma versión
 
   const COLOR = { bajo: '#2e9e5b', moderado: '#e9c13b', alto: '#ee8a2b', critico: '#d43d3d', cerrado: '#9aa3ad', sin: '#7c6aa6' };
   const COLOR_PRIORIDAD = { alta: '#d43d3d', media: '#ee8a2b', baja: '#2e9e5b' };
@@ -23,7 +23,7 @@
   const st = {
     kpi: null, edificios: null, zonas: null, escenario: 'auto', demo: null, capa: 'ocupacion', seleccion: null,
     piso: 'todas', filtro: 'todo', usuario: null, tab: 'ahora',
-    capaEd: {}, capaZona: {}, vivoEd: {}, prop: {}, propEd: {}, origen: {}, centroides: {}, charts: {}, vivo: {}, play: null, centroFI: null,
+    capaEd: {}, capaZona: {}, vivoEd: {}, prop: {}, propEd: {}, origen: {}, centroides: {}, charts: {}, pendientes: {}, vivo: {}, play: null, centroFI: null,
   };
   let mapa, grupoEd, grupoZonas, grupoAP, grupoTramas, marcadorUsuario, circuloPrecision, lineaRuta;
 
@@ -531,6 +531,7 @@
     if (st.tab === 'generales') paso(() => pintarGenerales(t));
     if (st.tab === 'mantto') paso(pintarMantto);
     paso(pulirTextos);
+    requestAnimationFrame(() => paso(dibujarPendientes));
     if (st.seleccion) paso(() => (st.seleccion.startsWith('ed:') ? pintarEdificio(st.seleccion.slice(3), t) : pintarDetalle(st.seleccion, t)));
   }
 
@@ -1214,22 +1215,45 @@
       },
     });
   }
+  /** Dibuja o actualiza una gráfica.
+   *  - Si su lienzo está oculto (otra pestaña, ficha cerrada) no se dibuja: queda pendiente y se dibuja al mostrarse.
+   *    (Chart.js no puede medir un lienzo oculto y lo deja en blanco.)
+   *  - Si cambia lo que muestra (otro espacio, otras series) se vuelve a crear; si no, solo se actualizan los datos. */
   function grafica(idCanvas, cfg) {
     if (!window.Chart) return;
+    const cv = $(idCanvas);
+    if (!cv) return;
     const prev = st.charts[idCanvas];
-    if (prev && prev.config.type === cfg.type && prev.data.datasets.length === cfg.data.datasets.length) {
-      prev.data.labels = cfg.data.labels;
+    const visible = cv.offsetParent !== null && cv.parentElement.clientWidth > 0;
+    if (!visible) {
+      if (prev) { prev.destroy(); delete st.charts[idCanvas]; }
+      st.pendientes[idCanvas] = cfg;
+      return;
+    }
+    delete st.pendientes[idCanvas];
+    const firma = JSON.stringify([cfg.type, cfg.data.labels, cfg.data.datasets.map((d) => d.label)]);
+    if (prev && prev.$firma === firma && prev.width > 0) {
       cfg.data.datasets.forEach((ds, k) => Object.assign(prev.data.datasets[k], ds));
-      prev.options = Object.assign(prev.options, cfg.options || {});
+      if (cfg.options) prev.options = cfg.options;
       prev.update('none');
       return;
     }
     if (prev) prev.destroy();
-    st.charts[idCanvas] = new Chart($(idCanvas), cfg);
+    const ch = new Chart(cv, cfg);
+    ch.$firma = firma;
+    st.charts[idCanvas] = ch;
+  }
+  /** Dibuja las gráficas que quedaron pendientes y cuyo lienzo ya está visible. */
+  function dibujarPendientes() {
+    Object.keys(st.pendientes).forEach((id) => { const cv = $(id); if (cv && cv.offsetParent !== null) grafica(id, st.pendientes[id]); });
+    // Lienzos visibles que quedaron sin tamaño (p. ej., tras girar la tableta): se vuelven a crear
+    Object.entries(st.charts).forEach(([id, ch]) => { const cv = $(id); if (cv && cv.offsetParent !== null && (!ch.width || !ch.height)) { const cfg = ch.config._config || ch.config; ch.destroy(); delete st.charts[id]; grafica(id, { type: cfg.type, data: cfg.data, options: cfg.options }); } });
   }
 
   // ------------------------------------------------------------------ controles
   function iniciarControles() {
+    let tRes = null;
+    window.addEventListener('resize', () => { clearTimeout(tRes); tRes = setTimeout(dibujarPendientes, 250); });
     document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
       st.tab = b.dataset.tab;
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('activo', x === b));
