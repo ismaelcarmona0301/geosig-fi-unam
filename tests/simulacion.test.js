@@ -80,6 +80,8 @@ const bib = Sim.ocupacionEnVivo('BIB', new Date(2026, 10, 24, 17, 0), 'ordinario
 assert(['alto', 'critico'].includes(bib.estado), `Biblioteca 17:00 = ${bib.estado}`);
 const alt = Sim.alternativas('BIB', new Date(2026, 10, 24, 11, 0), 'ordinario');
 assert(alt.length > 0, 'a las 11:00 debe haber otra biblioteca con espacio');
+const alt17 = Sim.alternativas('BIB', new Date(2026, 10, 24, 17, 0), 'ordinario');
+alt17.forEach((a) => assert(a.ahora.estado !== 'critico', 'no se sugiere un lugar lleno'));
 alt.forEach((a) => assert.strictEqual(Sim.grupo(a.id), 'biblioteca'));
 ['AC_TREN', 'SALA_COMPUTO_1'].forEach((o) => Sim.alternativas(o, new Date(2026, 10, 24, 13, 0), 'ordinario')
   .forEach((a) => assert.strictEqual(Sim.grupo(a.id), Sim.grupo(o))));

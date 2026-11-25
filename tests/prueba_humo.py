@@ -35,7 +35,7 @@ FAKE_L = r"""
 
 FAKE_CHART = r"""
 (function(){
- function Chart(el,cfg){ this.config=cfg; this.data=cfg.data; this.options=cfg.options||{}; window.__charts=(window.__charts||0)+1;
+ function Chart(el,cfg){ this.config=cfg; this.data=cfg.data; this.options=cfg.options||{}; this.width=el.parentElement.clientWidth; this.height=el.parentElement.clientHeight; window.__charts=(window.__charts||0)+1;
    const c=el.getContext('2d'); c.fillStyle='#e8eef7'; c.fillRect(0,0,el.width,el.height); c.fillStyle='#002b5c'; c.font='14px sans-serif';
    c.fillText('[gráfica '+cfg.type+': '+cfg.data.datasets.length+' series]',10,24); }
  Chart.prototype.update=function(){}; Chart.prototype.destroy=function(){};

@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const Sim = window.Simulacion;
-  const VERSION = '20261124-1745';   // igual que en index.html: obliga al navegador a usar archivos de la misma versión
+  const VERSION = '20261125-1110';   // igual que en index.html: obliga al navegador a usar archivos de la misma versión
 
   const COLOR = { bajo: '#2e9e5b', moderado: '#e9c13b', alto: '#ee8a2b', critico: '#d43d3d', cerrado: '#9aa3ad', sin: '#7c6aa6' };
   const COLOR_PRIORIDAD = { alta: '#d43d3d', media: '#ee8a2b', baja: '#2e9e5b' };

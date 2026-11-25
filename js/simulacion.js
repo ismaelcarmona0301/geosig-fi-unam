@@ -209,22 +209,29 @@
     return horas;
   }
 
-  /** Alternativas del mismo tipo con espacio, ordenadas por cercanía (la ocupación prevista a 30 min solo desempata). */
+  /** Alternativas del mismo tipo con más espacio que donde estás, ordenadas por cercanía (la ocupación prevista a 30 min desempata). */
   function alternativas(id, fecha, escenarioForzado, distancias) {
     const g = grupo(id);
     if (!g) return [];
     const candidatos = Object.keys(KPI.recintos).concat(Object.keys(KPI.edificios_sim || {}));
+    // Nivel del lugar donde estás (misma escala para todos los espacios)
+    const origen = ocupacionEnVivo(id, fecha, escenarioForzado);
+    const nivelOrigen = origen.abierto ? equivalente(id, origen.ocupacion) : 1;
     return candidatos
       .filter((o) => o !== id && grupo(o) === g)
       .map((o) => {
         const p = prediccion(o, fecha, escenarioForzado, 30);
-        const sat30 = p.puntos.length ? p.puntos[p.puntos.length - 1].saturacion : p.ahora.saturacion;
+        const fin = p.puntos.length ? p.puntos[p.puntos.length - 1] : p.ahora;
+        const sat30 = fin.estado === 'cerrado' ? 1 : equivalente(o, fin.ocupacion);
         const dist = distancias ? distancias[o] : null;
         return { id: o, nombre: R(o).nombre, ahora: p.ahora, sat30, dist, esEdificio: !KPI.recintos[o],
           // Lo que manda es la cercanía; la ocupación solo desempata (lleno = +150 m equivalentes)
           puntaje: (dist || 0) + sat30 * 150 };
       })
-      .filter((a) => a.ahora.abierto && ['bajo', 'moderado'].includes(a.ahora.estado) && a.sat30 < UMBRALES.alto)
+      // Se sugiere si tiene lugar de verdad: no está llena (< 90 %) ni lo estará en 30 min,
+      // y está al menos 8 puntos menos ocupada que donde estás. Un lugar al 80 % sí sirve si el tuyo está al 95 %.
+      .filter((a) => a.ahora.abierto && a.ahora.estado !== 'critico' && a.sat30 < UMBRALES.critico
+        && equivalente(a.id, a.ahora.ocupacion) <= nivelOrigen - 0.08)
       .sort((a, b) => a.puntaje - b.puntaje);
   }
 
